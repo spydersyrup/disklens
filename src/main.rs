@@ -24,3 +24,39 @@ fn main() {
     std::process::exit(rc);
 }
 
+#[cfg(test)]
+mod tests {
+    use crate::models::FileCategory;
+    use crate::utils::{
+        abbreviate_label, format_bytes, format_duration, format_percent, sha256_file_bounded,
+        sha256_hex, truncate_middle,
+    };
+    use std::path::Path;
+
+    #[test]
+    fn test_formatters_and_categories() {
+        assert_eq!(format_bytes(999), "999 B");
+        assert_eq!(format_bytes(1000), "1.00 KB");
+        assert_eq!(format_bytes(12_345_678), "12.3 MB");
+        assert_eq!(format_percent(0.0005), "<0.1%");
+        assert_eq!(format_duration(0.05), "0.05s");
+        assert_eq!(abbreviate_label("DerivedData"), "DD");
+        assert_eq!(abbreviate_label("Application Support"), "AS");
+        assert_eq!(truncate_middle("abcdefghijkl", 8), "ab...jkl");
+        assert_eq!(
+            FileCategory::classify_bytes(b"archive.tar.gz", false),
+            FileCategory::Archive
+        );
+        assert_eq!(
+            FileCategory::classify_bytes(b"cache.sqlite-wal", false),
+            FileCategory::System
+        );
+        assert_eq!(format_bytes(-12_345_678), "-12.3 MB");
+        let digest =
+            sha256_file_bounded(Path::new("Cargo.toml"), 65536, true).expect("hash Cargo.toml");
+        assert_eq!(sha256_hex(&digest).len(), 64);
+        let digest_full =
+            sha256_file_bounded(Path::new("Cargo.toml"), 0, true).expect("hash Cargo.toml full");
+        assert_eq!(sha256_hex(&digest_full).len(), 64);
+    }
+}
