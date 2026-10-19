@@ -1,0 +1,10 @@
+target/
+dist/
+*.o
+*.exe
+*.tar.gz
+scripts/gh
+Packaging/Icon/*.png
+Packaging/Icon/make_icon_bin
+*.tmp
+.DS_Store
