@@ -3179,7 +3179,56 @@ bool dd_views_handle_key(DDAppState *st, DDCanvas *cv, int key_code, uint32_t ch
         }
     }
 
+    if (ch == '?') {
+        st->show_shortcuts_help = !st->show_shortcuts_help;
+        return true;
+    }
 
+    /* Backspace or Left Arrow: navigate up to parent folder */
+    if (key_code == 8 || key_code == 37) {
+        if (st->tree && st->current_folder > 0) {
+            int32_t p = st->tree->nodes[st->current_folder].parent_idx;
+            if (p >= 0) {
+                set_current_folder(st, p);
+                return true;
+            }
+        }
+    }
+
+    /* Right Arrow: drill into selected folder */
+    if (key_code == 39) {
+        if (st->tree && st->selected_node >= 0 && st->selected_node < st->tree->node_count) {
+            if (st->tree->nodes[st->selected_node].is_directory) {
+                set_current_folder(st, st->selected_node);
+                return true;
+            }
+        }
+    }
+
+    /* Up / Down Arrows: navigate sibling items in Explore view */
+    if (st->tree && st->active_tab == TAB_EXPLORE && (key_code == 38 || key_code == 40)) {
+        int32_t fidx = st->tree->nodes[st->current_folder].folder_idx;
+        if (fidx >= 0) {
+            const DDFolderExtra *fe = &st->tree->folders[fidx];
+            if (fe->child_count > 0) {
+                int cur_k = -1;
+                for (int32_t i = 0; i < fe->child_count; i++) {
+                    if (fe->children[i] == st->selected_node) {
+                        cur_k = (int)i;
+                        break;
+                    }
+                }
+                if (key_code == 40) { /* Down */
+                    int next_k = (cur_k + 1 < fe->child_count) ? cur_k + 1 : 0;
+                    st->selected_node = fe->children[next_k];
+                } else { /* Up */
+                    int prev_k = (cur_k > 0) ? cur_k - 1 : fe->child_count - 1;
+                    st->selected_node = fe->children[prev_k];
+                }
+                return true;
+            }
+        }
+    }
 
     /* Explore view shortcuts */
     if (st->active_tab == TAB_EXPLORE) {
@@ -3229,7 +3278,8 @@ bool dd_views_handle_key(DDAppState *st, DDCanvas *cv, int key_code, uint32_t ch
     if (key_code == -9) {
         int n = dd_canvas_hit_count(cv);
         if (n > 0) {
-            st->focused_hit_idx = (st->focused_hit_idx - 1) % n;
+            if (st->focused_hit_idx <= 0) st->focused_hit_idx = n - 1;
+            else st->focused_hit_idx = (st->focused_hit_idx - 1) % n;
             return true;
         }
     }
