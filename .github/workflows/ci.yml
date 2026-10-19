@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  linux-build-and-test:
+    name: Linux Build & Verification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc make libx11-dev
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run unit test suite
+        run: cargo test --verbose
+
+      - name: Build native binary
+        run: make linux
+
+      - name: Run self-test verification suite
+        run: |
+          BIN=$(ls dist/disk* 2>/dev/null | head -n 1)
+          "$BIN" --verify .
+
+  windows-cross-compile:
+    name: Windows Cross-Compile
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install MinGW cross-compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-mingw-w64-x86-64
+
+      - name: Install Rust toolchain with Windows target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-gnu
+
+      - name: Build Windows executable
+        run: make windows
+
+      - name: Verify Windows output artifact
+        run: |
+          test -f dist/*.exe
+          ls -lh dist/*.exe
+
+  hygiene:
+    name: Code & Documentation Hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Check for disallowed em dashes
+        run: |
+          echo "Scanning markdown and source files for em dashes..."
+          ! grep -rn "—" Sources/ src/ docs/ README.md Packaging/
