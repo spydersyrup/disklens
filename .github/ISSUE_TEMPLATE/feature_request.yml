@@ -1,0 +1,28 @@
+name: Feature Request
+description: Suggest an enhancement or new functionality for DiskLens
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Feature proposals should outline the practical problem being solved and how the workflow works.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What limitation or use case are you encountering?
+      placeholder: Describe the current workflow and where it falls short.
+    validations:
+      required: true
+  - type: textarea
+    id: proposed_solution
+    attributes:
+      label: Proposed solution
+      description: Describe how you envision the feature working in DiskLens.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternative approaches considered
+      description: Have you considered other tools or workarounds?
