@@ -11,8 +11,8 @@ rm -rf "${LINUX_STAGE}" "${WIN_STAGE}"
 mkdir -p "${LINUX_STAGE}/bin" "${LINUX_STAGE}/share/applications" "${LINUX_STAGE}/share/icons/hicolor/512x512/apps"
 
 cp -f "dist/${APP_EXEC}" "${LINUX_STAGE}/bin/${APP_EXEC}"
-cp -f "dist/diskdude.desktop" "${LINUX_STAGE}/share/applications/diskdude.desktop"
-cp -f "Packaging/Icon/diskdude.png" "${LINUX_STAGE}/share/icons/hicolor/512x512/apps/diskdude.png"
+cp -f "dist/disklens.desktop" "${LINUX_STAGE}/share/applications/disklens.desktop"
+cp -f "Packaging/Icon/disklens.png" "${LINUX_STAGE}/share/icons/hicolor/512x512/apps/disklens.png"
 cp -f "README.md" "${LINUX_STAGE}/README.md"
 
 tar -czf "dist/${APP_NAME}-${VERSION}-linux-x86_64.tar.gz" -C dist "${APP_NAME}-${VERSION}-linux-x86_64"
@@ -20,7 +20,7 @@ tar -czf "dist/${APP_NAME}-${VERSION}-linux-x86_64.tar.gz" -C dist "${APP_NAME}-
 if [ -f "dist/${APP_WIN_EXEC}" ]; then
     mkdir -p "${WIN_STAGE}"
     cp -f "dist/${APP_WIN_EXEC}" "${WIN_STAGE}/${APP_WIN_EXEC}"
-    cp -f "Packaging/Icon/diskdude.png" "${WIN_STAGE}/diskdude.png"
+    cp -f "Packaging/Icon/disklens.png" "${WIN_STAGE}/disklens.png"
     cp -f "README.md" "${WIN_STAGE}/README.md"
     tar -czf "dist/${APP_NAME}-${VERSION}-windows-x86_64.tar.gz" -C dist "${APP_NAME}-${VERSION}-windows-x86_64"
 fi

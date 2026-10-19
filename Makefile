@@ -17,11 +17,11 @@ all: linux windows
 
 linux:
 	@mkdir -p dist
-	$(CC) $(CFLAGS) $(SRCS) -lX11 -lpthread -ldl -lm -o dist/diskdude
+	./scripts/build_app.sh
 
 windows:
 	@mkdir -p dist
-	$(WINCC) $(CFLAGS) $(SRCS) -lgdi32 -luser32 -lshell32 -lole32 -luuid -lcomdlg32 -lpsapi -lm -mwindows -o dist/DiskDude.exe
+	./scripts/build_app.sh
 
 icon:
 	./scripts/make_icon.sh
@@ -33,10 +33,10 @@ package:
 	./scripts/package_app.sh
 
 run: linux
-	./dist/diskdude
+	./dist/disklens
 
 verify: linux
-	./dist/diskdude --verify .
+	./dist/disklens --verify .
 
 clean:
-	rm -rf dist Packaging/Icon/diskdude.png Packaging/Icon/make_icon_bin
+	rm -rf dist Packaging/Icon/disklens.png Packaging/Icon/make_icon_bin

@@ -1,11 +1,11 @@
 [Desktop Entry]
 Type=Application
-Name=DiskDude
+Name=DiskLens
 GenericName=Disk Space Analyzer
-Comment=Map every byte on your computer with 9 interactive views and safe Trash cleanup
-Exec=diskdude
-Icon=diskdude
+Comment=Map storage usage across nine views with safe Trash cleanup
+Exec=disklens
+Icon=disklens
 Terminal=false
 Categories=System;Filesystem;Utility;
 Keywords=disk;storage;space;treemap;sunburst;duplicates;cleanup;
-StartupWMClass=DiskDude
+StartupWMClass=DiskLens

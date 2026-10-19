@@ -1,11 +1,11 @@
 [package]
-name = "diskdude"
+name = "disklens"
 version = "1.0.0"
 edition = "2021"
-description = "Native ultra-lightweight disk space analyzer with 9 visualizations and safe Trash cleanup"
+description = "Native disk storage analyzer with nine visualizations and safe Trash cleanup"
 
 [[bin]]
-name = "diskdude"
+name = "disklens"
 path = "src/main.rs"
 
 [profile.release]
