@@ -1,6 +1,7 @@
 #ifndef DISKDUDE_UTILS_H
 #define DISKDUDE_UTILS_H
 
+#include <stdio.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stddef.h>
@@ -100,5 +101,12 @@ void dd_open_permissions_help(void);
 bool dd_pick_folder_dialog(char *out_path, size_t cap);
 void dd_get_home_dir(char *out_path, size_t cap);
 void dd_get_root_dir(char *out_path, size_t cap);
+
+#include "../Models/Models.h"
+void dd_write_html_escaped(FILE *f, const char *s);
+void dd_write_csv_field_safe(FILE *f, const char *s);
+bool dd_export_tree_json(const DDFileTree *tree, const char *out_path);
+bool dd_export_tree_csv(const DDFileTree *tree, const char *out_path);
+bool dd_export_tree_html(const DDFileTree *tree, const char *out_path);
 
 #endif

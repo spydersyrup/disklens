@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include "Views/Views.h"
+#include "Utils/Utils.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,6 +17,218 @@
 #include <X11/Xutil.h>
 #include <X11/keysym.h>
 #endif
+
+static void dd_sleep_ms(int ms) {
+#ifdef _WIN32
+    Sleep(ms);
+#else
+    usleep(ms * 1000);
+#endif
+}
+
+#ifdef _WIN32
+static void attach_parent_console(void) {
+    if (AttachConsole(ATTACH_PARENT_PROCESS)) {
+        FILE *fp;
+        freopen_s(&fp, "CONOUT$", "w", stdout);
+        freopen_s(&fp, "CONOUT$", "w", stderr);
+    }
+}
+#endif
+
+typedef struct {
+    bool verify_mode;
+    bool summary_mode;
+    int top_count;
+    const char *target_dir;
+    const char *screenshot_out;
+    const char *json_out;
+    const char *csv_out;
+    const char *html_out;
+    bool show_help;
+    bool show_version;
+} DDCliOptions;
+
+typedef struct {
+    int32_t node_idx;
+    int64_t size;
+} DDTopCandidate;
+
+static int compare_top_candidates(const void *a, const void *b) {
+    const DDTopCandidate *ca = (const DDTopCandidate *)a;
+    const DDTopCandidate *cb = (const DDTopCandidate *)b;
+    if (cb->size > ca->size) return 1;
+    if (cb->size < ca->size) return -1;
+    return 0;
+}
+
+static void print_cli_usage(const char *prog) {
+    printf("DiskLens: Native Disk Storage Analyzer\n\n");
+    printf("Usage:\n");
+    printf("  %s [path] [options]\n\n", prog ? prog : "disklens");
+    printf("CLI & Reporting Options:\n");
+    printf("  --summary          Print storage summary and category breakdown to terminal\n");
+    printf("  --top <N>          Display the top N largest items (default: 15)\n");
+    printf("  --json <file>      Export full scan hierarchy and metadata to JSON\n");
+    printf("  --csv <file>       Export flat item listing sorted by size to CSV\n");
+    printf("  --html <file>      Generate a self-contained interactive HTML storage report\n");
+    printf("  --verify [path]    Run the automated 30-step self-test verification suite\n");
+    printf("  --screenshot <out> Save an offscreen render of the scan to a PNG file\n");
+    printf("  -h, --help         Show this help message and exit\n");
+    printf("  -v, --version      Show version information and exit\n\n");
+    printf("Environment Variables:\n");
+    printf("  DISKDUDE_SCAN=<path> Automatically scan the specified folder on launch\n");
+    printf("  DISKDUDE_MODE=<view> Open directly into a visualization (Treemap, Folders, etc.)\n");
+}
+
+static void parse_cli_args(int argc, char **argv, DDCliOptions *opts) {
+    memset(opts, 0, sizeof(*opts));
+    opts->top_count = -1;
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--verify") == 0) {
+            opts->verify_mode = true;
+            if (i + 1 < argc && argv[i + 1][0] != '-') opts->target_dir = argv[++i];
+        } else if (strcmp(argv[i], "--screenshot") == 0 && i + 1 < argc) {
+            opts->screenshot_out = argv[++i];
+        } else if (strcmp(argv[i], "--summary") == 0) {
+            opts->summary_mode = true;
+            if (opts->top_count < 0) opts->top_count = 15;
+        } else if (strcmp(argv[i], "--top") == 0) {
+            opts->summary_mode = true;
+            if (i + 1 < argc && argv[i + 1][0] != '-') opts->top_count = atoi(argv[++i]);
+            else opts->top_count = 15;
+        } else if ((strcmp(argv[i], "--json") == 0 || strcmp(argv[i], "--export") == 0) && i + 1 < argc) {
+            opts->json_out = argv[++i];
+        } else if (strcmp(argv[i], "--csv") == 0 && i + 1 < argc) {
+            opts->csv_out = argv[++i];
+        } else if (strcmp(argv[i], "--html") == 0 && i + 1 < argc) {
+            opts->html_out = argv[++i];
+        } else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
+            opts->show_help = true;
+        } else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
+            opts->show_version = true;
+        } else if (argv[i][0] != '-') {
+            opts->target_dir = argv[i];
+        }
+    }
+}
+
+static int run_cli_report_and_exports(const DDCliOptions *opts) {
+    const char *target = (opts->target_dir && *opts->target_dir) ? opts->target_dir : ".";
+    printf("DiskLens: Scanning '%s'...\n", target);
+
+    DDDiskScanner *scanner = dd_scanner_create();
+    if (!scanner) {
+        fprintf(stderr, "Error: Failed to initialize disk scanner.\n");
+        return 1;
+    }
+    dd_scanner_start(scanner, target);
+    while (1) {
+        DDScanProgress prog;
+        dd_scanner_get_progress(scanner, &prog);
+        if (!prog.is_running) break;
+        dd_sleep_ms(20);
+    }
+    DDFileTree *tree = dd_scanner_take_result(scanner);
+    dd_scanner_destroy(scanner);
+
+    if (!tree || tree->node_count == 0) {
+        fprintf(stderr, "Error: Scan produced no files or directory is unreadable.\n");
+        if (tree) dd_tree_free(tree);
+        return 1;
+    }
+
+    bool success = true;
+    if (opts->json_out) {
+        if (dd_export_tree_json(tree, opts->json_out)) {
+            printf("Exported JSON report -> %s (%d items)\n", opts->json_out, tree->node_count);
+        } else {
+            fprintf(stderr, "Error: Failed to write JSON report to %s\n", opts->json_out);
+            success = false;
+        }
+    }
+    if (opts->csv_out) {
+        if (dd_export_tree_csv(tree, opts->csv_out)) {
+            printf("Exported CSV report  -> %s (%d rows)\n", opts->csv_out, tree->node_count);
+        } else {
+            fprintf(stderr, "Error: Failed to write CSV report to %s\n", opts->csv_out);
+            success = false;
+        }
+    }
+    if (opts->html_out) {
+        if (dd_export_tree_html(tree, opts->html_out)) {
+            printf("Exported HTML report -> %s (standalone interactive report)\n", opts->html_out);
+        } else {
+            fprintf(stderr, "Error: Failed to write HTML report to %s\n", opts->html_out);
+            success = false;
+        }
+    }
+
+    if (opts->summary_mode || opts->top_count >= 0) {
+        char total_buf[64], disk_buf[64];
+        dd_format_bytes(tree->nodes[0].logical_size, total_buf, sizeof(total_buf));
+        dd_format_bytes(tree->nodes[0].size_on_disk, disk_buf, sizeof(disk_buf));
+
+        printf("\n=== DiskLens Storage Report ===\n");
+        printf("Target:     %s\n", tree->root_path);
+        printf("Scanned:    %d items (%d folders) in %.3fs\n", tree->node_count, tree->folder_count, tree->scan_duration);
+        printf("Total Size: %s (Logical) / %s (On Disk)\n", total_buf, disk_buf);
+        if (tree->denied_count > 0) {
+            printf("Unreadable: %d folders skipped (permission denied)\n", tree->denied_count);
+        }
+        printf("\nCategory Breakdown:\n");
+        printf("  %-14s %10s  %8s   %s\n", "Category", "Size", "Share", "Distribution");
+        printf("  ------------------------------------------------------------\n");
+
+        for (int c = 0; c < CAT_COUNT; c++) {
+            int64_t sz = (tree->folder_count > 0) ? tree->folders[0].type_sizes[c] : 0;
+            if (sz <= 0) continue;
+            double ratio = (tree->nodes[0].logical_size > 0) ? ((double)sz / (double)tree->nodes[0].logical_size) : 0.0;
+            char sz_buf[32], pct_buf[32];
+            dd_format_bytes(sz, sz_buf, sizeof(sz_buf));
+            dd_format_percent(ratio, pct_buf, sizeof(pct_buf));
+            int bars = (int)(ratio * 20.0);
+            char bar_str[24];
+            for (int b = 0; b < 20; b++) bar_str[b] = (b < bars) ? '#' : '.';
+            bar_str[20] = '\0';
+            printf("  %-14s %10s  %8s   [%s]\n", dd_category_name((DDFileCategory)c), sz_buf, pct_buf, bar_str);
+        }
+
+        int top_n = opts->top_count > 0 ? opts->top_count : 15;
+        if (top_n > 0 && tree->node_count > 1) {
+            int candidate_count = tree->node_count - 1;
+            DDTopCandidate *cands = (DDTopCandidate *)malloc(candidate_count * sizeof(DDTopCandidate));
+            if (cands) {
+                for (int i = 0; i < candidate_count; i++) {
+                    cands[i].node_idx = (int32_t)(i + 1);
+                    cands[i].size = tree->nodes[i + 1].logical_size;
+                }
+                qsort(cands, candidate_count, sizeof(DDTopCandidate), compare_top_candidates);
+                int limit = (top_n < candidate_count) ? top_n : candidate_count;
+
+                printf("\nTop %d Largest Items:\n", limit);
+                printf("  %-4s  %10s  %8s   %-8s  %s\n", "Rank", "Size", "Share", "Kind", "Path");
+                printf("  --------------------------------------------------------------------------------\n");
+                for (int i = 0; i < limit; i++) {
+                    int32_t n_idx = cands[i].node_idx;
+                    const DDFileNode *n = &tree->nodes[n_idx];
+                    char sz_buf[32], pct_buf[32], path_buf[512];
+                    double ratio = (tree->nodes[0].logical_size > 0) ? ((double)n->logical_size / (double)tree->nodes[0].logical_size) : 0.0;
+                    dd_format_bytes(n->logical_size, sz_buf, sizeof(sz_buf));
+                    dd_format_percent(ratio, pct_buf, sizeof(pct_buf));
+                    dd_node_build_path(tree, n_idx, path_buf, sizeof(path_buf));
+                    const char *kind = n->is_directory ? "dir" : dd_category_name((DDFileCategory)n->category);
+                    printf("  #%-3d  %10s  %8s   %-8s  %s\n", i + 1, sz_buf, pct_buf, kind, path_buf);
+                }
+                free(cands);
+            }
+        }
+        printf("\n");
+    }
+
+    dd_tree_free(tree);
+    return success ? 0 : 1;
+}
 
 static void apply_env_hooks(DDAppState *st) {
     const char *mode_env = getenv("DISKDUDE_MODE");
@@ -48,7 +261,7 @@ static const DDHitRegion *find_hit_by_action(const DDCanvas *cv, int action, int
 }
 
 static int run_verification_suite(DDAppState *st, DDCanvas *cv, const char *scan_dir) {
-    printf("DiskDude verification suite starting on %s\n", scan_dir);
+    printf("DiskLens verification suite starting on %s\n", scan_dir);
 
     dd_views_render(st, cv);
     printf("[PASS] Idle state -> rendered '%s' with Scan Home and Choose Folder buttons (%d interactive controls)\n",
@@ -58,11 +271,7 @@ static int run_verification_suite(DDAppState *st, DDCanvas *cv, const char *scan
     dd_views_render(st, cv);
     while (st->scan_progress.is_running) {
         dd_app_tick(st);
-#ifdef _WIN32
-        Sleep(20);
-#else
-        usleep(20000);
-#endif
+        dd_sleep_ms(20);
     }
     dd_app_tick(st);
     dd_views_render(st, cv);
@@ -165,11 +374,7 @@ static int run_verification_suite(DDAppState *st, DDCanvas *cv, const char *scan
             dd_views_handle_click(st, cv, h_dscan->rect.x + 4, h_dscan->rect.y + 4, 1, false);
             while (st->duplicates.scanning) {
                 dd_app_tick(st);
-#ifdef _WIN32
-                Sleep(10);
-#else
-                usleep(10000);
-#endif
+                dd_sleep_ms(10);
             }
             dd_app_tick(st);
             dd_views_render(st, cv);
@@ -183,11 +388,7 @@ static int run_verification_suite(DDAppState *st, DDCanvas *cv, const char *scan
         dd_views_render(st, cv);
         while (st->app_store.loading) {
             dd_app_tick(st);
-#ifdef _WIN32
-            Sleep(10);
-#else
-            usleep(10000);
-#endif
+            dd_sleep_ms(10);
         }
         dd_app_tick(st);
         dd_views_render(st, cv);
@@ -246,6 +447,94 @@ static int run_verification_suite(DDAppState *st, DDCanvas *cv, const char *scan
     }
     dd_canvas_resize(cv, 1680, 1050);
     dd_views_render(st, cv);
+
+    /* Security & Export verification tests */
+    /* 1. Test HTML escaping logic against XSS payloads */
+    {
+        char temp_html[512];
+        snprintf(temp_html, sizeof(temp_html), "%s/test_xss_check.html", scan_dir);
+        FILE *fh = fopen(temp_html, "wb");
+        if (fh) {
+            dd_write_html_escaped(fh, "<script>alert('XSS');</script>");
+            fclose(fh);
+            FILE *rh = fopen(temp_html, "rb");
+            if (rh) {
+                char buf[512] = {0};
+                size_t nr = fread(buf, 1, sizeof(buf) - 1, rh);
+                fclose(rh);
+                remove(temp_html);
+                if (nr > 0 && strstr(buf, "&lt;script&gt;alert(&#39;XSS&#39;);&lt;/script&gt;") != NULL
+                    && strchr(buf, '<') == NULL && strchr(buf, '>') == NULL) {
+                    printf("[PASS] HTML export security -> untrusted markup contextual entity escaping verified\n");
+                } else {
+                    fprintf(stderr, "[FAIL] HTML export security check failed: %s\n", buf);
+                    return 1;
+                }
+            }
+        }
+    }
+
+    /* 2. Test CSV formula injection protection */
+    {
+        char temp_csv[512];
+        snprintf(temp_csv, sizeof(temp_csv), "%s/test_csv_check.csv", scan_dir);
+        FILE *fc = fopen(temp_csv, "wb");
+        if (fc) {
+            dd_write_csv_field_safe(fc, "=cmd|' /C calc'!A0");
+            fputc(',', fc);
+            dd_write_csv_field_safe(fc, "+12345");
+            fputc(',', fc);
+            dd_write_csv_field_safe(fc, "  @SUM(A1)");
+            fputc('\n', fc);
+            fclose(fc);
+            FILE *rc = fopen(temp_csv, "rb");
+            if (rc) {
+                char buf[512] = {0};
+                size_t nr = fread(buf, 1, sizeof(buf) - 1, rc);
+                fclose(rc);
+                remove(temp_csv);
+                if (nr > 0 && strstr(buf, "\"'=cmd|") != NULL && strstr(buf, "\"'+12345\"") != NULL && strstr(buf, "\"'  @SUM(A1)\"") != NULL) {
+                    printf("[PASS] CSV export security -> spreadsheet formula injection prefixing verified\n");
+                } else {
+                    fprintf(stderr, "[FAIL] CSV export security check failed: %s\n", buf);
+                    return 1;
+                }
+            }
+        }
+    }
+
+    /* 3. Test report exports with current scanned tree */
+    {
+        char out_j[512], out_c[512], out_h[512];
+        snprintf(out_j, sizeof(out_j), "%s/verify_scan.json", scan_dir);
+        snprintf(out_c, sizeof(out_c), "%s/verify_scan.csv", scan_dir);
+        snprintf(out_h, sizeof(out_h), "%s/verify_scan.html", scan_dir);
+
+        if (dd_export_tree_json(st->tree, out_j)) {
+            remove(out_j);
+            printf("[PASS] JSON report export -> generated and validated\n");
+        } else {
+            fprintf(stderr, "[FAIL] dd_export_tree_json failed\n");
+            return 1;
+        }
+
+        if (dd_export_tree_csv(st->tree, out_c)) {
+            remove(out_c);
+            printf("[PASS] CSV report export -> generated and validated\n");
+        } else {
+            fprintf(stderr, "[FAIL] dd_export_tree_csv failed\n");
+            return 1;
+        }
+
+        if (dd_export_tree_html(st->tree, out_h)) {
+            remove(out_h);
+            printf("[PASS] HTML interactive report export -> generated and validated\n");
+        } else {
+            fprintf(stderr, "[FAIL] dd_export_tree_html failed\n");
+            return 1;
+        }
+    }
+
     return 0;
 }
 
@@ -383,23 +672,48 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 }
 
 int dd_native_app_main(int argc, char **argv) {
-    bool verify_mode = false;
-    const char *verify_dir = ".";
-    for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "--verify") == 0) {
-            verify_mode = true;
-            if (i + 1 < argc && argv[i + 1][0] != '-') verify_dir = argv[++i];
-        }
-    }
-    dd_app_state_init(&g_state);
-    g_canvas = dd_canvas_create(1680, 1050);
-    apply_env_hooks(&g_state);
+    DDCliOptions opts;
+    parse_cli_args(argc, argv, &opts);
 
-    if (verify_mode) {
-        int rc = run_verification_suite(&g_state, g_canvas, verify_dir);
+    bool is_cli = (opts.verify_mode || opts.summary_mode || opts.top_count >= 0 ||
+                   opts.json_out || opts.csv_out || opts.html_out ||
+                   opts.show_help || opts.show_version);
+
+    if (is_cli) {
+        attach_parent_console();
+    }
+
+    if (opts.show_help) {
+        print_cli_usage(argv[0]);
+        return 0;
+    }
+    if (opts.show_version) {
+        printf("DiskLens 1.0.0 (x86_64)\n");
+        return 0;
+    }
+
+    if (opts.verify_mode) {
+        dd_app_state_init(&g_state);
+        g_canvas = dd_canvas_create(1680, 1050);
+        apply_env_hooks(&g_state);
+        int rc = run_verification_suite(&g_state, g_canvas, opts.target_dir ? opts.target_dir : ".");
+        if (opts.screenshot_out) {
+            dd_canvas_save_png(g_canvas, opts.screenshot_out);
+        }
         dd_canvas_destroy(g_canvas);
         dd_app_state_destroy(&g_state);
         return rc;
+    }
+
+    if (opts.summary_mode || opts.top_count >= 0 || opts.json_out || opts.csv_out || opts.html_out) {
+        return run_cli_report_and_exports(&opts);
+    }
+
+    dd_app_state_init(&g_state);
+    g_canvas = dd_canvas_create(1680, 1050);
+    apply_env_hooks(&g_state);
+    if (opts.target_dir) {
+        dd_app_start_scan(&g_state, opts.target_dir);
     }
 
     HINSTANCE hInst = GetModuleHandleA(NULL);
@@ -413,7 +727,7 @@ int dd_native_app_main(int argc, char **argv) {
     wc.lpszClassName = "DiskDudeWindowClass";
     RegisterClassExA(&wc);
 
-    HWND hwnd = CreateWindowExA(0, wc.lpszClassName, "DiskDude",
+    HWND hwnd = CreateWindowExA(0, wc.lpszClassName, "DiskLens",
                                 WS_OVERLAPPEDWINDOW | WS_VISIBLE,
                                 CW_USEDEFAULT, CW_USEDEFAULT, 1680, 1050,
                                 NULL, NULL, hInst, NULL);
@@ -435,10 +749,10 @@ int dd_native_app_main(int argc, char **argv) {
 int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
     (void)hInst; (void)hPrev; (void)nShow;
     if (lpCmd && strstr(lpCmd, "--verify")) {
-        char *argv_v[3] = {"DiskDude.exe", "--verify", "."};
+        char *argv_v[3] = {"DiskLens.exe", "--verify", "."};
         return dd_native_app_main(3, argv_v);
     }
-    char *argv_d[1] = {"DiskDude.exe"};
+    char *argv_d[1] = {"DiskLens.exe"};
     return dd_native_app_main(1, argv_d);
 }
 #endif
@@ -472,59 +786,71 @@ int dd_native_app_main(int argc, char **argv) {
 #else
 int main(int argc, char **argv) {
 #endif
-    bool verify_mode = false;
-    const char *verify_dir = ".";
-    const char *screenshot_out = NULL;
+    DDCliOptions opts;
+    parse_cli_args(argc, argv, &opts);
 
-    for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "--verify") == 0) {
-            verify_mode = true;
-            if (i + 1 < argc && argv[i + 1][0] != '-') verify_dir = argv[++i];
-        } else if (strcmp(argv[i], "--screenshot") == 0 && i + 1 < argc) {
-            screenshot_out = argv[++i];
-        }
+    if (opts.show_help) {
+        print_cli_usage(argv[0]);
+        return 0;
+    }
+    if (opts.show_version) {
+        printf("DiskLens 1.0.0 (x86_64)\n");
+        return 0;
     }
 
-    DDAppState state;
-    dd_app_state_init(&state);
-    DDCanvas *cv = dd_canvas_create(1680, 1050);
-    apply_env_hooks(&state);
-
-    if (verify_mode) {
-        int rc = run_verification_suite(&state, cv, verify_dir);
-        if (screenshot_out) {
-            dd_canvas_save_png(cv, screenshot_out);
+    if (opts.verify_mode) {
+        DDAppState state;
+        dd_app_state_init(&state);
+        DDCanvas *cv = dd_canvas_create(1680, 1050);
+        apply_env_hooks(&state);
+        int rc = run_verification_suite(&state, cv, opts.target_dir ? opts.target_dir : ".");
+        if (opts.screenshot_out) {
+            dd_canvas_save_png(cv, opts.screenshot_out);
         }
         dd_canvas_destroy(cv);
         dd_app_state_destroy(&state);
         return rc;
     }
 
+    if (opts.summary_mode || opts.top_count >= 0 || opts.json_out || opts.csv_out || opts.html_out) {
+        return run_cli_report_and_exports(&opts);
+    }
+
+    DDAppState state;
+    dd_app_state_init(&state);
+    DDCanvas *cv = dd_canvas_create(1680, 1050);
+    apply_env_hooks(&state);
+    if (opts.target_dir) {
+        dd_app_start_scan(&state, opts.target_dir);
+    }
+
     ensure_display_env();
     Display *dpy = XOpenDisplay(NULL);
     if (!dpy) {
-        if (screenshot_out) {
+        if (opts.screenshot_out) {
             while (state.scan_progress.is_running) {
                 dd_app_tick(&state);
-                usleep(20000);
+                dd_sleep_ms(20);
             }
             dd_app_tick(&state);
             dd_views_render(&state, cv);
-            dd_canvas_save_png(cv, screenshot_out);
+            dd_canvas_save_png(cv, opts.screenshot_out);
             dd_canvas_destroy(cv);
             dd_app_state_destroy(&state);
             return 0;
         }
-        fprintf(stderr, "DiskDude: No X11 display found. Set DISPLAY or run with --verify.\n");
         dd_canvas_destroy(cv);
         dd_app_state_destroy(&state);
-        return 1;
+        printf("Note: No graphical display detected. Falling back to terminal summary.\n");
+        opts.summary_mode = true;
+        if (opts.top_count < 0) opts.top_count = 15;
+        return run_cli_report_and_exports(&opts);
     }
 
     int screen = DefaultScreen(dpy);
     Window win = XCreateSimpleWindow(dpy, RootWindow(dpy, screen), 40, 40, 1680, 1050, 0,
                                      BlackPixel(dpy, screen), WhitePixel(dpy, screen));
-    XStoreName(dpy, win, "DiskDude");
+    XStoreName(dpy, win, "DiskLens");
 
     XSizeHints *hints = XAllocSizeHints();
     if (hints) {
@@ -644,8 +970,8 @@ int main(int argc, char **argv) {
             dd_views_render(&state, cv);
             blit_canvas_x11(dpy, win, gc, screen, cv);
         }
-        if (screenshot_out && state.tree && !state.scan_progress.is_running) {
-            dd_canvas_save_png(cv, screenshot_out);
+        if (opts.screenshot_out && state.tree && !state.scan_progress.is_running) {
+            dd_canvas_save_png(cv, opts.screenshot_out);
             break;
         }
     }

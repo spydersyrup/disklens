@@ -527,6 +527,11 @@ void dd_scanner_start(DDDiskScanner *s, const char *root_path) {
     snprintf(s->target_root, sizeof(s->target_root), "%s", root_path);
 
     s->building_tree = dd_tree_create(root_path);
+    if (!s->building_tree) {
+        s->progress.is_running = false;
+        unlock_scanner(s);
+        return;
+    }
     push_job_locked(s, 0, 0, false, s->building_tree->root_path);
     unlock_scanner(s);
 

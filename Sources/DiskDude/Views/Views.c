@@ -206,6 +206,16 @@ bool dd_app_tick(DDAppState *st) {
         changed = true;
     }
 
+    if (st->app_store.pending_result) {
+        DDAppStore *res = (DDAppStore *)st->app_store.pending_result;
+        st->app_store.pending_result = NULL;
+        memcpy(st->app_store.apps, res->apps, sizeof(st->app_store.apps));
+        st->app_store.count = res->count;
+        st->app_store.grand_total = res->grand_total;
+        free(res);
+        changed = true;
+    }
+
     DDScanProgress prev = st->scan_progress;
     dd_scanner_get_progress(st->scanner, &st->scan_progress);
     if (st->scan_progress.is_running || prev.is_running != st->scan_progress.is_running ||
@@ -2921,15 +2931,16 @@ bool dd_views_handle_action(DDAppState *st, const DDHitRegion *hit) {
         case ACT_APP_UNINSTALL_TRASH:
             if (hit->param_int >= 0 && hit->param_int < st->app_store.count) {
                 const DDInstalledApp *app = &st->app_store.apps[hit->param_int];
-                DDTrashResult res;
-                dd_app_terminate_and_trash(app, &res);
-                st->show_uninstall_modal = false;
-                if (res.failed_count > 0) {
-                    snprintf(st->trash_error_msg, sizeof(st->trash_error_msg), "Permission denied trashing %s", app->name);
-                    st->show_trash_error = true;
-                } else {
-                    dd_apps_start_load(&st->app_store);
+                char r1[160];
+                snprintf(r1, sizeof(r1), "App bundle: %s", app->name);
+                dd_queue_stage(&st->cleanup_queue, app->bundle_path, app->name, app->bundle_size, r1, -1);
+                for (int l = 0; l < app->leftover_count; l++) {
+                    char rl[160];
+                    snprintf(rl, sizeof(rl), "%s: %s", app->name, app->leftovers[l].category);
+                    dd_queue_stage(&st->cleanup_queue, app->leftovers[l].path, NULL, app->leftovers[l].size, rl, -1);
                 }
+                st->show_uninstall_modal = false;
+                st->show_trash_confirm = true;
             }
             return true;
         case ACT_MON_SORT_TOGGLE:
@@ -3181,6 +3192,60 @@ bool dd_views_handle_key(DDAppState *st, DDCanvas *cv, int key_code, uint32_t ch
 
 
 
+    /* Arrow and navigation keys: protected so they never move behind modal dialogs */
+    if (!st->show_trash_confirm && !st->show_shortcuts_help && !st->show_uninstall_modal && !st->show_trash_error) {
+        if (ch == '?') {
+            st->show_shortcuts_help = !st->show_shortcuts_help;
+            return true;
+        }
+
+        /* Backspace or Left Arrow: navigate up to parent folder */
+        if (key_code == 8 || key_code == 37) {
+            if (st->tree && st->current_folder > 0) {
+                int32_t p = st->tree->nodes[st->current_folder].parent_idx;
+                if (p >= 0) {
+                    set_current_folder(st, p);
+                    return true;
+                }
+            }
+        }
+
+        /* Right Arrow: drill into selected folder */
+        if (key_code == 39) {
+            if (st->tree && st->selected_node >= 0 && st->selected_node < st->tree->node_count) {
+                if (st->tree->nodes[st->selected_node].is_directory) {
+                    set_current_folder(st, st->selected_node);
+                    return true;
+                }
+            }
+        }
+
+        /* Up / Down Arrows: navigate sibling items in Explore view */
+        if (st->tree && st->active_tab == TAB_EXPLORE && (key_code == 38 || key_code == 40)) {
+            int32_t fidx = st->tree->nodes[st->current_folder].folder_idx;
+            if (fidx >= 0) {
+                const DDFolderExtra *fe = &st->tree->folders[fidx];
+                if (fe->child_count > 0) {
+                    int cur_k = -1;
+                    for (int32_t i = 0; i < fe->child_count; i++) {
+                        if (fe->children[i] == st->selected_node) {
+                            cur_k = (int)i;
+                            break;
+                        }
+                    }
+                    if (key_code == 40) { /* Down */
+                        int next_k = (cur_k + 1 < fe->child_count) ? cur_k + 1 : 0;
+                        st->selected_node = fe->children[next_k];
+                    } else { /* Up */
+                        int prev_k = (cur_k > 0) ? cur_k - 1 : fe->child_count - 1;
+                        st->selected_node = fe->children[prev_k];
+                    }
+                    return true;
+                }
+            }
+        }
+    }
+
     /* Explore view shortcuts */
     if (st->active_tab == TAB_EXPLORE) {
         if (ch >= '1' && ch <= '9') {
@@ -3229,7 +3294,8 @@ bool dd_views_handle_key(DDAppState *st, DDCanvas *cv, int key_code, uint32_t ch
     if (key_code == -9) {
         int n = dd_canvas_hit_count(cv);
         if (n > 0) {
-            st->focused_hit_idx = (st->focused_hit_idx - 1) % n;
+            if (st->focused_hit_idx <= 0) st->focused_hit_idx = n - 1;
+            else st->focused_hit_idx = (st->focused_hit_idx - 1) % n;
             return true;
         }
     }

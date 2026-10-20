@@ -1,0 +1,46 @@
+name: Bug Report
+description: Report a defect, crash, or unexpected behavior in DiskLens
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting an issue. Please provide concrete steps to help reproduce the problem.
+  - type: input
+    id: os
+    attributes:
+      label: Operating System & Version
+      placeholder: e.g. Ubuntu 24.04 (Linux x86_64) or Windows 11 23H2
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: DiskLens Version or Commit SHA
+      placeholder: e.g. v1.0.0 or commit hash
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the behavior you observed.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Exact steps or command line arguments that trigger the issue.
+      placeholder: |
+        1. Run ./dist/disklens
+        2. Click 'Choose Folder' and select /path/to/folder
+        3. Switch to 'Duplicates' tab
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Terminal output or error messages
+      description: Copy relevant console logs or run with --verify to paste diagnostic output.
+      render: shell
