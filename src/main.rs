@@ -203,4 +203,44 @@ mod tests {
         let _ = std::fs::remove_file(path);
         let _ = std::fs::remove_dir(dir);
     }
+
+    #[test]
+    fn test_atomic_file_write_and_overwrite() {
+        use crate::utils::write_file_atomic;
+        let dir = std::env::temp_dir().join(format!("disklens_atomic_test_{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        let target = dir.join("atomic_target.txt");
+
+        // First write creates file
+        assert!(write_file_atomic(&target, b"initial payload"));
+        assert_eq!(std::fs::read_to_string(&target).unwrap(), "initial payload");
+
+        // Second write safely replaces content
+        assert!(write_file_atomic(&target, b"updated payload"));
+        assert_eq!(std::fs::read_to_string(&target).unwrap(), "updated payload");
+
+        // Write to nonexistent directory fails safely without panic
+        let bad_target = dir.join("nonexistent_sub").join("target.txt");
+        assert!(!write_file_atomic(&bad_target, b"data"));
+
+        let _ = std::fs::remove_file(&target);
+        let _ = std::fs::remove_dir(dir);
+    }
+
+    #[test]
+    fn test_dd_exec_sync_safety() {
+        use crate::utils::dd_exec_sync;
+        use std::ffi::CString;
+
+        // Null pointer safety
+        unsafe {
+            assert!(!dd_exec_sync(std::ptr::null(), std::ptr::null(), std::ptr::null(), std::ptr::null()));
+        }
+
+        // Nonexistent executable returns false safely without panic
+        let bad_cmd = CString::new("this_cmd_absolutely_does_not_exist_xyz123").unwrap();
+        unsafe {
+            assert!(!dd_exec_sync(bad_cmd.as_ptr(), std::ptr::null(), std::ptr::null(), std::ptr::null()));
+        }
+    }
 }

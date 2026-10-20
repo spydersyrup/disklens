@@ -669,6 +669,30 @@ static bool move_single_to_trash(const char *path) {
     op.fFlags = FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_NOERRORUI | FOF_SILENT;
     return SHFileOperationA(&op) == 0;
 #else
+static void safe_cleanup_trash_dest(const char *dest_file, const char *trash_files_dir, const char *src_path) {
+    if (!dest_file || !*dest_file || !trash_files_dir || !*trash_files_dir) {
+        return;
+    }
+    if (src_path && strcmp(dest_file, src_path) == 0) {
+        return;
+    }
+    size_t tlen = strlen(trash_files_dir);
+    if (strncmp(dest_file, trash_files_dir, tlen) != 0 || (dest_file[tlen] != '/' && dest_file[tlen] != '\0')) {
+        return;
+    }
+    struct stat dst_st;
+    if (lstat(dest_file, &dst_st) != 0) {
+        return;
+    }
+    if (S_ISLNK(dst_st.st_mode)) {
+        unlink(dest_file);
+    } else if (S_ISDIR(dst_st.st_mode)) {
+        dd_exec_sync("rm", "-rf", dest_file, NULL);
+    } else {
+        unlink(dest_file);
+    }
+}
+
     struct stat st;
     if (lstat(path, &st) != 0) {
         return errno == ENOENT;
@@ -770,10 +794,20 @@ static bool move_single_to_trash(const char *path) {
                     } else {
                         unlink(path);
                     }
-                    moved = true;
+                    /* Verify source was removed */
+                    struct stat check_src;
+                    if (lstat(path, &check_src) != 0) {
+                        moved = true;
+                    } else {
+                        /* Source could not be removed; revert destination to prevent duplication */
+                        safe_cleanup_trash_dest(dest_file, files_dir, path);
+                    }
                 } else {
-                    unlink(dest_file);
+                    safe_cleanup_trash_dest(dest_file, files_dir, path);
                 }
+            } else {
+                /* Copy failed mid-way; cleanly remove partial destination */
+                safe_cleanup_trash_dest(dest_file, files_dir, path);
             }
         }
     }

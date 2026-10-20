@@ -1,15 +1,5 @@
-CC ?= gcc
-WINCC ?= x86_64-w64-mingw32-gcc
-CFLAGS ?= -std=c11 -O2 -Wall -Wextra -Wno-unused-parameter -Wno-format-truncation
-
-SRCS = \
-	Sources/DiskDude/DiskDudeApp.c \
-	Sources/DiskDude/Theme/Theme.c \
-	Sources/DiskDude/Utils/Utils.c \
-	Sources/DiskDude/Utils/Canvas.c \
-	Sources/DiskDude/Models/FileNode.c \
-	Sources/DiskDude/Scanning/DiskScanner.c \
-	Sources/DiskDude/Views/Views.c
+CARGO ?= cargo
+CARGOFLAGS ?= --release
 
 .PHONY: all linux windows run app package icon verify clean
 
@@ -17,11 +7,21 @@ all: linux windows
 
 linux:
 	@mkdir -p dist
-	$(CC) $(CFLAGS) $(SRCS) -lX11 -lpthread -ldl -lm -o dist/diskdude
+	$(CARGO) build $(CARGOFLAGS)
+	@if [ -f target/release/diskdude ]; then \
+		cp -f target/release/diskdude dist/diskdude; \
+	elif [ -f target/release/diskdude.exe ]; then \
+		cp -f target/release/diskdude.exe dist/diskdude.exe; \
+	fi
 
 windows:
 	@mkdir -p dist
-	$(WINCC) $(CFLAGS) $(SRCS) -lgdi32 -luser32 -lshell32 -lole32 -luuid -lcomdlg32 -lpsapi -lm -mwindows -o dist/DiskDude.exe
+	$(CARGO) build $(CARGOFLAGS) --target x86_64-pc-windows-gnu
+	@if [ -f target/x86_64-pc-windows-gnu/release/diskdude.exe ]; then \
+		cp -f target/x86_64-pc-windows-gnu/release/diskdude.exe dist/DiskDude.exe; \
+	elif [ -f target/release/diskdude.exe ]; then \
+		cp -f target/release/diskdude.exe dist/DiskDude.exe; \
+	fi
 
 icon:
 	./scripts/make_icon.sh
@@ -33,10 +33,10 @@ package:
 	./scripts/package_app.sh
 
 run: linux
-	./dist/diskdude
+	@if [ -f dist/diskdude ]; then ./dist/diskdude; else ./dist/diskdude.exe; fi
 
 verify: linux
-	./dist/diskdude --verify .
+	@if [ -f dist/diskdude ]; then ./dist/diskdude --verify .; else ./dist/diskdude.exe --verify .; fi
 
 clean:
-	rm -rf dist Packaging/Icon/diskdude.png Packaging/Icon/make_icon_bin
+	rm -rf dist target/release target/x86_64-pc-windows-gnu/release Packaging/Icon/diskdude.png Packaging/Icon/make_icon_bin

@@ -375,7 +375,8 @@ pub fn resolve_data_dir(subdir: &str) -> PathBuf {
 }
 
 pub fn write_file_atomic(path: &Path, content: &[u8]) -> bool {
-    let tmp_path = path.with_extension("tmp");
+    let fname = path.file_name().unwrap_or_default().to_string_lossy();
+    let tmp_path = path.with_file_name(format!(".{}.{}.tmp", fname, std::process::id()));
     let ok = (|| -> std::io::Result<()> {
         let mut f = File::create(&tmp_path)?;
         f.write_all(content)?;

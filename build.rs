@@ -5,16 +5,20 @@ use std::process::Command;
 fn main() {
     let out_dir = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR not set"));
     let target = env::var("TARGET").unwrap_or_default();
+    let host = env::var("HOST").unwrap_or_default();
     let is_windows = target.contains("windows");
+    let is_windows_host = host.contains("windows");
 
     let cc = env::var("CC").unwrap_or_else(|_| {
         if is_windows {
-            if Command::new("x86_64-w64-mingw32-gcc").arg("--version").output().is_ok() {
-                "x86_64-w64-mingw32-gcc".to_string()
-            } else if Command::new("gcc").arg("--version").output().is_ok() {
-                "gcc".to_string()
-            } else if PathBuf::from(r"C:\Qt\Tools\mingw1310_64\bin\gcc.exe").exists() {
-                r"C:\Qt\Tools\mingw1310_64\bin\gcc.exe".to_string()
+            if is_windows_host {
+                if Command::new("gcc").arg("--version").output().is_ok() {
+                    "gcc".to_string()
+                } else if Command::new("x86_64-w64-mingw32-gcc").arg("--version").output().is_ok() {
+                    "x86_64-w64-mingw32-gcc".to_string()
+                } else {
+                    "gcc".to_string()
+                }
             } else {
                 "x86_64-w64-mingw32-gcc".to_string()
             }
@@ -25,12 +29,14 @@ fn main() {
 
     let ar = env::var("AR").unwrap_or_else(|_| {
         if is_windows {
-            if Command::new("x86_64-w64-mingw32-ar").arg("--version").output().is_ok() {
-                "x86_64-w64-mingw32-ar".to_string()
-            } else if Command::new("ar").arg("--version").output().is_ok() {
-                "ar".to_string()
-            } else if PathBuf::from(r"C:\Qt\Tools\mingw1310_64\bin\ar.exe").exists() {
-                r"C:\Qt\Tools\mingw1310_64\bin\ar.exe".to_string()
+            if is_windows_host {
+                if Command::new("ar").arg("--version").output().is_ok() {
+                    "ar".to_string()
+                } else if Command::new("x86_64-w64-mingw32-ar").arg("--version").output().is_ok() {
+                    "x86_64-w64-mingw32-ar".to_string()
+                } else {
+                    "ar".to_string()
+                }
             } else {
                 "x86_64-w64-mingw32-ar".to_string()
             }
@@ -49,20 +55,25 @@ fn main() {
         "Sources/DiskDude/Views/Views.c",
     ];
 
-    let mut c_args = vec![
-        "-std=c11",
-        "-O2",
-        "-Wall",
-        "-Wextra",
-        "-Wno-unused-parameter",
-        "-Wno-format-truncation",
-        "-DDISKDUDE_RUST_HOST=1",
+    let mut c_args: Vec<String> = vec![
+        "-std=c11".to_string(),
+        "-O2".to_string(),
+        "-Wall".to_string(),
+        "-Wextra".to_string(),
+        "-Wno-unused-parameter".to_string(),
+        "-Wno-format-truncation".to_string(),
+        "-DDISKDUDE_RUST_HOST=1".to_string(),
     ];
+    if let Ok(extra_cflags) = env::var("CFLAGS") {
+        for flag in extra_cflags.split_whitespace() {
+            c_args.push(flag.to_string());
+        }
+    }
     if is_windows && target.contains("msvc") {
-        c_args.push("-D__USE_MINGW_ANSI_STDIO=0");
-        c_args.push("-mno-stack-arg-probe");
-        c_args.push("-fno-builtin-sin");
-        c_args.push("-fno-builtin-cos");
+        c_args.push("-D__USE_MINGW_ANSI_STDIO=0".to_string());
+        c_args.push("-mno-stack-arg-probe".to_string());
+        c_args.push("-fno-builtin-sin".to_string());
+        c_args.push("-fno-builtin-cos".to_string());
     }
 
     let mut objects = Vec::new();
@@ -95,9 +106,8 @@ fn main() {
             println!("cargo:rustc-link-lib=dylib={}", lib);
         }
         if target.contains("msvc") {
-            if PathBuf::from(r"C:\Qt\Tools\mingw1310_64\x86_64-w64-mingw32\lib").exists() {
-                println!(r"cargo:rustc-link-search=native=C:\Qt\Tools\mingw1310_64\x86_64-w64-mingw32\lib");
-                println!(r"cargo:rustc-link-search=native=C:\Qt\Tools\mingw1310_64\lib\gcc\x86_64-w64-mingw32\13.1.0");
+            if let Ok(mingw_lib) = env::var("MINGW_LIB_DIR") {
+                println!("cargo:rustc-link-search=native={}", mingw_lib);
                 println!("cargo:rustc-link-lib=static=mingwex");
                 println!("cargo:rustc-link-lib=static=gcc");
             }
