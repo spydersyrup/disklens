@@ -568,14 +568,142 @@ static void blit_canvas_x11(Display *dpy, Window win, GC gc, int screen, DDCanva
     XFlush(dpy);
 }
 
-#ifdef DISKSONAR_RUST_HOST
+static void print_cli_usage(const char *prog) {
+    printf("DiskSonar: Native Disk Storage Analyzer\n\n");
+    printf("Usage:\n");
+    printf("  %s [path] [options]\n\n", prog ? prog : "disksonar");
+    printf("Options:\n");
+    printf("  --summary             Print storage summary and category breakdown to terminal\n");
+    printf("  --top <N>             Display the top N largest items (default: 15)\n");
+    printf("  --exclude, -e <pat>   Exclude patterns or directories during scan\n");
+    printf("  --verify [path]       Run the automated 31-step self-test verification suite\n");
+    printf("  --screenshot <out>    Save an offscreen render of the scan to a PNG file\n");
+    printf("  -h, --help            Show this help message and exit\n");
+    printf("  -v, --version         Show version information and exit\n\n");
+    printf("Environment Variables:\n");
+    printf("  DISKSONAR_SCAN=<path> Automatically scan the specified folder on launch\n");
+    printf("  DISKSONAR_MODE=<view> Open directly into a visualization (Treemap, Folders, etc.)\n");
+    printf("  DISKSONAR_EXCLUDE=<s> Comma-separated exclude patterns\n");
+}
+
+static int run_cli_report(const char *target_dir, int top_count, const char *exclude_pattern) {
+    if (!target_dir || !*target_dir) target_dir = ".";
+    printf("DiskSonar: Scanning '%s'...\n", target_dir);
+
+    DDDiskScanner *scanner = dd_scanner_create();
+    if (!scanner) {
+        fprintf(stderr, "Error: Failed to initialize disk scanner.\n");
+        return 1;
+    }
+    if (exclude_pattern && *exclude_pattern) {
+        dd_scanner_add_exclude(scanner, exclude_pattern);
+    }
+    const char *ex_env = getenv("DISKSONAR_EXCLUDE");
+    if (!ex_env || !*ex_env) ex_env = getenv("DISKDUDE_EXCLUDE");
+    if (ex_env && *ex_env) {
+        dd_scanner_add_exclude(scanner, ex_env);
+    }
+
+    dd_scanner_start(scanner, target_dir);
+    while (1) {
+        DDScanProgress prog;
+        dd_scanner_get_progress(scanner, &prog);
+        if (!prog.is_running) break;
+        usleep(20000);
+    }
+    DDFileTree *tree = dd_scanner_take_result(scanner);
+    dd_scanner_destroy(scanner);
+
+    if (!tree || tree->node_count == 0) {
+        fprintf(stderr, "Error: Scan produced no files or directory is unreadable.\n");
+        if (tree) dd_tree_free(tree);
+        return 1;
+    }
+
+    char total_buf[64], disk_buf[64];
+    dd_format_bytes(tree->nodes[0].logical_size, total_buf, sizeof(total_buf));
+    dd_format_bytes(tree->nodes[0].size_on_disk, disk_buf, sizeof(disk_buf));
+
+    printf("\n=== DiskSonar Storage Report ===\n");
+    printf("Target:     %s\n", tree->root_path);
+    printf("Scanned:    %d items (%d folders) in %.3fs\n", tree->node_count, tree->folder_count, tree->scan_duration);
+    printf("Total Size: %s (Logical) / %s (On Disk)\n", total_buf, disk_buf);
+    if (tree->denied_count > 0) {
+        printf("Unreadable: %d folders skipped (permission denied)\n", tree->denied_count);
+    }
+    printf("\nCategory Breakdown:\n");
+    printf("  %-14s %10s  %8s   %s\n", "Category", "Size", "Share", "Distribution");
+    printf("  ------------------------------------------------------------\n");
+
+    for (int c = 0; c < CAT_COUNT; c++) {
+        int64_t sz = (tree->folder_count > 0) ? tree->folders[0].type_sizes[c] : 0;
+        if (sz <= 0) continue;
+        double ratio = (tree->nodes[0].logical_size > 0) ? ((double)sz / (double)tree->nodes[0].logical_size) : 0.0;
+        char sz_buf[32], pct_buf[32];
+        dd_format_bytes(sz, sz_buf, sizeof(sz_buf));
+        dd_format_percent(ratio, pct_buf, sizeof(pct_buf));
+        int bars = (int)(ratio * 20.0);
+        char bar_str[24];
+        for (int b = 0; b < 20; b++) bar_str[b] = (b < bars) ? '#' : '.';
+        bar_str[20] = '\0';
+        printf("  %-14s %10s  %8s   [%s]\n", dd_category_name((DDFileCategory)c), sz_buf, pct_buf, bar_str);
+    }
+
+    if (top_count > 0 && tree->node_count > 1) {
+        int candidate_count = tree->node_count - 1;
+        int32_t *indices = (int32_t *)malloc(candidate_count * sizeof(int32_t));
+        if (indices) {
+            for (int i = 0; i < candidate_count; i++) indices[i] = i + 1;
+            int limit = (top_count < candidate_count) ? top_count : candidate_count;
+            for (int i = 0; i < limit; i++) {
+                int max_idx = i;
+                int64_t max_val = tree->nodes[indices[i]].logical_size;
+                for (int j = i + 1; j < candidate_count; j++) {
+                    if (tree->nodes[indices[j]].logical_size > max_val) {
+                        max_val = tree->nodes[indices[j]].logical_size;
+                        max_idx = j;
+                    }
+                }
+                if (max_idx != i) {
+                    int32_t tmp = indices[i];
+                    indices[i] = indices[max_idx];
+                    indices[max_idx] = tmp;
+                }
+            }
+
+            printf("\nTop %d Largest Items:\n", limit);
+            printf("  %-4s  %10s  %8s   %-8s  %s\n", "Rank", "Size", "Share", "Kind", "Path");
+            printf("  --------------------------------------------------------------------------------\n");
+            for (int i = 0; i < limit; i++) {
+                int32_t n_idx = indices[i];
+                const DDFileNode *n = &tree->nodes[n_idx];
+                char sz_buf[32], pct_buf[32], path_buf[512];
+                double ratio = (tree->nodes[0].logical_size > 0) ? ((double)n->logical_size / (double)tree->nodes[0].logical_size) : 0.0;
+                dd_format_bytes(n->logical_size, sz_buf, sizeof(sz_buf));
+                dd_format_percent(ratio, pct_buf, sizeof(pct_buf));
+                dd_node_build_path(tree, n_idx, path_buf, sizeof(path_buf));
+                const char *kind = n->is_directory ? "dir" : dd_category_name((DDFileCategory)n->category);
+                printf("  #%-3d  %10s  %8s   %-8s  %s\n", i + 1, sz_buf, pct_buf, kind, path_buf);
+            }
+            free(indices);
+        }
+    }
+    printf("\n");
+    dd_tree_free(tree);
+    return 0;
+}
+
+#if defined(DISKSONAR_RUST_HOST) || defined(DISKDUDE_RUST_HOST)
 int dd_native_app_main(int argc, char **argv) {
 #else
 int main(int argc, char **argv) {
 #endif
     bool verify_mode = false;
-    const char *verify_dir = ".";
+    bool cli_mode = false;
+    int top_count = 15;
+    const char *target_dir = NULL;
     const char *screenshot_out = NULL;
+    const char *cli_exclude = NULL;
 
     DDAppState state;
     dd_app_state_init(&state);
@@ -584,18 +712,45 @@ int main(int argc, char **argv) {
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--verify") == 0) {
             verify_mode = true;
-            if (i + 1 < argc && argv[i + 1][0] != '-') verify_dir = argv[++i];
+            if (i + 1 < argc && argv[i + 1][0] != '-') target_dir = argv[++i];
         } else if (strcmp(argv[i], "--screenshot") == 0 && i + 1 < argc) {
             screenshot_out = argv[++i];
         } else if ((strcmp(argv[i], "--exclude") == 0 || strcmp(argv[i], "-e") == 0) && i + 1 < argc) {
-            dd_scanner_add_exclude(state.scanner, argv[++i]);
+            cli_exclude = argv[++i];
+            dd_scanner_add_exclude(state.scanner, cli_exclude);
+        } else if (strcmp(argv[i], "--summary") == 0) {
+            cli_mode = true;
+        } else if (strcmp(argv[i], "--top") == 0) {
+            cli_mode = true;
+            if (i + 1 < argc && argv[i + 1][0] != '-') top_count = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
+            print_cli_usage(argv[0]);
+            dd_canvas_destroy(cv);
+            dd_app_state_destroy(&state);
+            return 0;
+        } else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
+            printf("DiskSonar 1.0.0 (x86_64)\n");
+            dd_canvas_destroy(cv);
+            dd_app_state_destroy(&state);
+            return 0;
+        } else if (argv[i][0] != '-') {
+            target_dir = argv[i];
         }
     }
 
+    if (cli_mode) {
+        dd_canvas_destroy(cv);
+        dd_app_state_destroy(&state);
+        return run_cli_report(target_dir ? target_dir : ".", top_count, cli_exclude);
+    }
+
     apply_env_hooks(&state);
+    if (target_dir) {
+        dd_app_start_scan(&state, target_dir);
+    }
 
     if (verify_mode) {
-        int rc = run_verification_suite(&state, cv, verify_dir);
+        int rc = run_verification_suite(&state, cv, target_dir ? target_dir : ".");
         if (screenshot_out) {
             dd_canvas_save_png(cv, screenshot_out);
         }
@@ -619,10 +774,10 @@ int main(int argc, char **argv) {
             dd_app_state_destroy(&state);
             return 0;
         }
-        fprintf(stderr, "DiskSonar: No X11 display found. Set DISPLAY or run with --verify.\n");
         dd_canvas_destroy(cv);
         dd_app_state_destroy(&state);
-        return 1;
+        printf("Note: No graphical display detected. Falling back to terminal summary.\n");
+        return run_cli_report(target_dir ? target_dir : ".", top_count, cli_exclude);
     }
 
     int screen = DefaultScreen(dpy);
