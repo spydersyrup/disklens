@@ -586,7 +586,7 @@ bool dd_pick_folder_dialog(char *out_path, size_t cap) {
 #ifdef _WIN32
     BROWSEINFOA bi;
     memset(&bi, 0, sizeof(bi));
-    bi.lpszTitle = "Select a folder to scan with DiskDude";
+    bi.lpszTitle = "Select a folder to scan with DiskSonar";
     bi.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE;
     LPITEMIDLIST pidl = SHBrowseForFolderA(&bi);
     if (pidl) {
@@ -600,7 +600,8 @@ bool dd_pick_folder_dialog(char *out_path, size_t cap) {
     }
     return false;
 #else
-    const char *env_pick = getenv("DISKDUDE_PICK_FOLDER");
+    const char *env_pick = getenv("DISKSONAR_PICK_FOLDER");
+    if (!env_pick || !*env_pick) env_pick = getenv("DISKDUDE_PICK_FOLDER");
     if (env_pick && *env_pick) {
         snprintf(out_path, cap, "%s", env_pick);
         return true;

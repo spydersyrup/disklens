@@ -245,7 +245,7 @@ static void render_top_bar(DDAppState *st, DDCanvas *cv, int W) {
         draw_outline_button(cv, th, (DDRect){x, 12.0, 58.0, 32.0}, "Menu", st->show_sidebar_drawer, ACT_TOGGLE_SIDEBAR_DRAWER, 0, 0, NULL);
         x += 66.0;
     } else {
-        dd_canvas_text(cv, x, 34.0, "DiskDude", 15.0, true, false, th->text);
+        dd_canvas_text(cv, x, 34.0, "DiskSonar", 15.0, true, false, th->text);
         x += 84.0;
     }
 

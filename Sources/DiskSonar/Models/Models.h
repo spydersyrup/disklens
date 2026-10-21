@@ -1,5 +1,5 @@
-#ifndef DISKDUDE_MODELS_H
-#define DISKDUDE_MODELS_H
+#ifndef DISKSONAR_MODELS_H
+#define DISKSONAR_MODELS_H
 
 #include <stdbool.h>
 #include <stdint.h>

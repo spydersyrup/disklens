@@ -18,7 +18,8 @@
 #endif
 
 static void apply_env_hooks(DDAppState *st) {
-    const char *mode_env = getenv("DISKDUDE_MODE");
+    const char *mode_env = getenv("DISKSONAR_MODE");
+    if (!mode_env || !*mode_env) mode_env = getenv("DISKDUDE_MODE");
     if (mode_env && *mode_env) {
         static const char * const names[9] = {
             "Treemap", "Folders", "Sunburst", "Flame", "Bubbles", "Mind Map", "Top Sizes", "Age Map", "List"
@@ -30,7 +31,8 @@ static void apply_env_hooks(DDAppState *st) {
             }
         }
     }
-    const char *scan_env = getenv("DISKDUDE_SCAN");
+    const char *scan_env = getenv("DISKSONAR_SCAN");
+    if (!scan_env || !*scan_env) scan_env = getenv("DISKDUDE_SCAN");
     if (scan_env && *scan_env) {
         dd_app_start_scan(st, scan_env);
     }
@@ -48,7 +50,7 @@ static const DDHitRegion *find_hit_by_action(const DDCanvas *cv, int action, int
 }
 
 static int run_verification_suite(DDAppState *st, DDCanvas *cv, const char *scan_dir) {
-    printf("DiskDude verification suite starting on %s\n", scan_dir);
+    printf("DiskSonar verification suite starting on %s\n", scan_dir);
 
     dd_views_render(st, cv);
     printf("[PASS] Idle state -> rendered '%s' with Scan Home and Choose Folder buttons (%d interactive controls)\n",
@@ -410,10 +412,10 @@ int dd_native_app_main(int argc, char **argv) {
     wc.lpfnWndProc = WndProc;
     wc.hInstance = hInst;
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-    wc.lpszClassName = "DiskDudeWindowClass";
+    wc.lpszClassName = "DiskSonarWindowClass";
     RegisterClassExA(&wc);
 
-    HWND hwnd = CreateWindowExA(0, wc.lpszClassName, "DiskDude",
+    HWND hwnd = CreateWindowExA(0, wc.lpszClassName, "DiskSonar",
                                 WS_OVERLAPPEDWINDOW | WS_VISIBLE,
                                 CW_USEDEFAULT, CW_USEDEFAULT, 1680, 1050,
                                 NULL, NULL, hInst, NULL);
@@ -431,14 +433,14 @@ int dd_native_app_main(int argc, char **argv) {
     return 0;
 }
 
-#ifndef DISKDUDE_RUST_HOST
+#ifndef DISKSONAR_RUST_HOST
 int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
     (void)hInst; (void)hPrev; (void)nShow;
     if (lpCmd && strstr(lpCmd, "--verify")) {
-        char *argv_v[3] = {"DiskDude.exe", "--verify", "."};
+        char *argv_v[3] = {"DiskSonar.exe", "--verify", "."};
         return dd_native_app_main(3, argv_v);
     }
-    char *argv_d[1] = {"DiskDude.exe"};
+    char *argv_d[1] = {"DiskSonar.exe"};
     return dd_native_app_main(1, argv_d);
 }
 #endif
@@ -467,7 +469,7 @@ static void blit_canvas_x11(Display *dpy, Window win, GC gc, int screen, DDCanva
     XFlush(dpy);
 }
 
-#ifdef DISKDUDE_RUST_HOST
+#ifdef DISKSONAR_RUST_HOST
 int dd_native_app_main(int argc, char **argv) {
 #else
 int main(int argc, char **argv) {
@@ -515,7 +517,7 @@ int main(int argc, char **argv) {
             dd_app_state_destroy(&state);
             return 0;
         }
-        fprintf(stderr, "DiskDude: No X11 display found. Set DISPLAY or run with --verify.\n");
+        fprintf(stderr, "DiskSonar: No X11 display found. Set DISPLAY or run with --verify.\n");
         dd_canvas_destroy(cv);
         dd_app_state_destroy(&state);
         return 1;
@@ -524,7 +526,7 @@ int main(int argc, char **argv) {
     int screen = DefaultScreen(dpy);
     Window win = XCreateSimpleWindow(dpy, RootWindow(dpy, screen), 40, 40, 1680, 1050, 0,
                                      BlackPixel(dpy, screen), WhitePixel(dpy, screen));
-    XStoreName(dpy, win, "DiskDude");
+    XStoreName(dpy, win, "DiskSonar");
 
     XSizeHints *hints = XAllocSizeHints();
     if (hints) {

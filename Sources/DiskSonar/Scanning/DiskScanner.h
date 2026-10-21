@@ -1,5 +1,5 @@
-#ifndef DISKDUDE_SCANNER_H
-#define DISKDUDE_SCANNER_H
+#ifndef DISKSONAR_SCANNER_H
+#define DISKSONAR_SCANNER_H
 
 #include "../Models/Models.h"
 #include <stdbool.h>

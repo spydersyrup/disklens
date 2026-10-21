@@ -1,11 +1,11 @@
 [package]
-name = "disklens"
+name = "disksonar"
 version = "1.0.0"
 edition = "2021"
 description = "Native disk storage analyzer with nine visualizations and safe Trash cleanup"
 
 [[bin]]
-name = "disklens"
+name = "disksonar"
 path = "src/main.rs"
 
 [profile.release]

@@ -328,7 +328,7 @@ pub fn resolve_data_dir(subdir: &str) -> PathBuf {
     #[cfg(windows)]
     {
         if let Ok(appdata) = env::var("APPDATA") {
-            let dir = PathBuf::from(appdata).join("DiskDude").join(subdir);
+            let dir = PathBuf::from(appdata).join("DiskSonar").join(subdir);
             if fs::create_dir_all(&dir).is_ok() {
                 return dir;
             }
@@ -340,14 +340,14 @@ pub fn resolve_data_dir(subdir: &str) -> PathBuf {
             let base = if subdir == "Trash/files" || subdir == "Trash/info" {
                 PathBuf::from(home).join(".local/share").join(subdir)
             } else {
-                PathBuf::from(home).join(".local/share/DiskDude").join(subdir)
+                PathBuf::from(home).join(".local/share/DiskSonar").join(subdir)
             };
             if fs::create_dir_all(&base).is_ok() {
                 return base;
             }
         }
     }
-    let fallback = PathBuf::from("/tmp/DiskDude").join(subdir);
+    let fallback = PathBuf::from("/tmp/DiskSonar").join(subdir);
     let _ = fs::create_dir_all(&fallback);
     fallback
 }

@@ -1,6 +1,6 @@
-# DiskLens
+# DiskSonar
 
-DiskLens is a native disk storage analyzer for Linux and Windows written in C11. It builds a flat in-memory tree of every file and folder, then presents storage distribution across nine interactive visualizations, a 3-pass duplicate finder, an application leftover cleaner, a live system monitor, and folder snapshots.
+DiskSonar is a native disk storage analyzer for Linux and Windows written in C11. It builds a flat in-memory tree of every file and folder, then presents storage distribution across nine interactive visualizations, a 3-pass duplicate finder, an application leftover cleaner, a live system monitor, and folder snapshots.
 
 Items are never deleted directly. Every item is staged in the Cleanup Queue first. Committing the queue moves items to the system Trash (FreeDesktop.org Trash on Linux, Recycle Bin on Windows) after confirmation, and updates ancestor sizes in place without rescanning.
 
@@ -54,10 +54,10 @@ Items are never deleted directly. Every item is staged in the Cleanup Queue firs
 ### Build Commands
 
 ```bash
-# Build native Linux binary (dist/disklens)
+# Build native Linux binary (dist/disksonar)
 make linux
 
-# Build Windows executable (dist/DiskLens.exe)
+# Build Windows executable (dist/DiskSonar.exe)
 make windows
 
 # Build both platforms
@@ -74,11 +74,11 @@ make package
 
 ```bash
 # Launch GUI
-./dist/disklens
+./dist/disksonar
 
 # Launch with pre-selected path
-DISKDUDE_SCAN=/home ./dist/disklens
+DISKSONAR_SCAN=/home ./dist/disksonar
 
 # Launch directly into a specific view
-DISKDUDE_MODE=Treemap ./dist/disklens
+DISKSONAR_MODE=Treemap ./dist/disksonar
 ```

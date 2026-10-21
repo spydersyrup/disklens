@@ -3,6 +3,6 @@ set -euo pipefail
 
 mkdir -p Packaging/Icon dist
 gcc -O2 Packaging/Icon/make_icon.c -lm -o Packaging/Icon/make_icon_bin
-./Packaging/Icon/make_icon_bin Packaging/Icon/disklens.png
+./Packaging/Icon/make_icon_bin Packaging/Icon/disksonar.png
 rm -f Packaging/Icon/make_icon_bin
-echo "Generated Packaging/Icon/disklens.png"
+echo "Generated Packaging/Icon/disksonar.png"

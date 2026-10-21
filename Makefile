@@ -3,13 +3,13 @@ WINCC ?= x86_64-w64-mingw32-gcc
 CFLAGS ?= -std=c11 -O2 -Wall -Wextra -Wno-unused-parameter -Wno-format-truncation
 
 SRCS = \
-	Sources/DiskDude/DiskDudeApp.c \
-	Sources/DiskDude/Theme/Theme.c \
-	Sources/DiskDude/Utils/Utils.c \
-	Sources/DiskDude/Utils/Canvas.c \
-	Sources/DiskDude/Models/FileNode.c \
-	Sources/DiskDude/Scanning/DiskScanner.c \
-	Sources/DiskDude/Views/Views.c
+	Sources/DiskSonar/DiskSonarApp.c \
+	Sources/DiskSonar/Theme/Theme.c \
+	Sources/DiskSonar/Utils/Utils.c \
+	Sources/DiskSonar/Utils/Canvas.c \
+	Sources/DiskSonar/Models/FileNode.c \
+	Sources/DiskSonar/Scanning/DiskScanner.c \
+	Sources/DiskSonar/Views/Views.c
 
 .PHONY: all linux windows run app package icon verify clean
 
@@ -33,10 +33,10 @@ package:
 	./scripts/package_app.sh
 
 run: linux
-	./dist/disklens
+	./dist/disksonar
 
 verify: linux
-	./dist/disklens --verify .
+	./dist/disksonar --verify .
 
 clean:
-	rm -rf dist Packaging/Icon/disklens.png Packaging/Icon/make_icon_bin
+	rm -rf dist Packaging/Icon/disksonar.png Packaging/Icon/make_icon_bin

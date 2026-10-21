@@ -19,13 +19,13 @@ fn main() {
     };
 
     let sources = [
-        "Sources/DiskDude/DiskDudeApp.c",
-        "Sources/DiskDude/Theme/Theme.c",
-        "Sources/DiskDude/Utils/Utils.c",
-        "Sources/DiskDude/Utils/Canvas.c",
-        "Sources/DiskDude/Models/FileNode.c",
-        "Sources/DiskDude/Scanning/DiskScanner.c",
-        "Sources/DiskDude/Views/Views.c",
+        "Sources/DiskSonar/DiskSonarApp.c",
+        "Sources/DiskSonar/Theme/Theme.c",
+        "Sources/DiskSonar/Utils/Utils.c",
+        "Sources/DiskSonar/Utils/Canvas.c",
+        "Sources/DiskSonar/Models/FileNode.c",
+        "Sources/DiskSonar/Scanning/DiskScanner.c",
+        "Sources/DiskSonar/Views/Views.c",
     ];
 
     let mut objects = Vec::new();
@@ -40,7 +40,7 @@ fn main() {
                 "-Wextra",
                 "-Wno-unused-parameter",
                 "-Wno-format-truncation",
-                "-DDISKDUDE_RUST_HOST=1",
+                "-DDISKSONAR_RUST_HOST=1",
                 "-c",
                 src,
                 "-o",
@@ -52,17 +52,17 @@ fn main() {
         objects.push(obj);
     }
 
-    let lib_path = out_dir.join("libdiskdude_platform.a");
+    let lib_path = out_dir.join("libdisksonar_platform.a");
     let mut ar_cmd = Command::new(ar);
     ar_cmd.arg("rcs").arg(&lib_path);
     for obj in &objects {
         ar_cmd.arg(obj);
     }
     let ar_status = ar_cmd.status().expect("Failed to invoke ar");
-    assert!(ar_status.success(), "Failed to archive libdiskdude_platform.a");
+    assert!(ar_status.success(), "Failed to archive libdisksonar_platform.a");
 
     println!("cargo:rustc-link-search=native={}", out_dir.display());
-    println!("cargo:rustc-link-lib=static=diskdude_platform");
+    println!("cargo:rustc-link-lib=static=disksonar_platform");
 
     if is_windows {
         for lib in ["gdi32", "user32", "shell32", "ole32", "uuid", "comdlg32", "psapi", "advapi32"] {

@@ -1,5 +1,5 @@
-#ifndef DISKDUDE_THEME_H
-#define DISKDUDE_THEME_H
+#ifndef DISKSONAR_THEME_H
+#define DISKSONAR_THEME_H
 
 #include <stdbool.h>
 #include <stdint.h>
