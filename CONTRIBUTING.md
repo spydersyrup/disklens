@@ -1,6 +1,6 @@
-# Contributing to DiskLens
+# Contributing to DiskSonar
 
-Thank you for your interest in contributing to DiskLens. This document outlines development setup, coding guidelines, and the pull request process.
+Thank you for your interest in contributing to DiskSonar. This document outlines development setup, coding guidelines, and the pull request process.
 
 ## Development Setup
 
@@ -51,7 +51,7 @@ make verify
 
 ## Architectural Guidelines
 
-1. **Safety First**: DiskLens never unlinks or deletes files directly. Any proposed file deletion action must stage items through the Cleanup Queue and use system Trash (FreeDesktop.org Trash on Linux, Recycle Bin on Windows).
+1. **Safety First**: DiskSonar never unlinks or deletes files directly. Any proposed file deletion action must stage items through the Cleanup Queue and use system Trash (FreeDesktop.org Trash on Linux, Recycle Bin on Windows).
 2. **Memory Efficiency**: Keep node storage inside flat contiguous arenas. Avoid introducing deep pointer-linked tree hierarchies that inflate heap allocation count.
 3. **Multi-threading**: Filesystem traversal is multi-threaded. Shared state must remain protected with platform mutex primitives or atomic counters.
 4. **No External Runtime Dependencies**: The core executable links only against standard OS system libraries (X11, pthread, dl, m on Linux; user32, gdi32, shell32, ole32, comdlg32, psapi on Windows).

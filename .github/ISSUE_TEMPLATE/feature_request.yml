@@ -1,5 +1,5 @@
 name: Feature Request
-description: Suggest an enhancement or new functionality for DiskLens
+description: Suggest an enhancement or new functionality for DiskSonar
 labels: ["enhancement"]
 body:
   - type: markdown
@@ -18,7 +18,7 @@ body:
     id: proposed_solution
     attributes:
       label: Proposed solution
-      description: Describe how you envision the feature working in DiskLens.
+      description: Describe how you envision the feature working in DiskSonar.
     validations:
       required: true
   - type: textarea
