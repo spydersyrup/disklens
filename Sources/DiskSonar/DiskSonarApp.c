@@ -815,6 +815,7 @@ int main(int argc, char **argv) {
 
     DDAppState state;
     dd_app_state_init(&state);
+    dd_monitor_sample(&state.monitor);
     DDCanvas *cv = dd_canvas_create(1680, 1050);
 
     if (cli_exclude) {

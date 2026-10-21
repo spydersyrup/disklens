@@ -1496,12 +1496,56 @@ static void render_explore_tab(DDAppState *st, DDCanvas *cv, DDRect main_r) {
 
     if (!st->tree || st->tree->node_count == 0) {
         double cx = main_r.x + main_r.w * 0.5;
-        double cy = main_r.y + main_r.h * 0.44;
+        double cy = main_r.y + 140.0;
         dd_canvas_draw_icon(cv, ICON_FOLDER, cx - 24.0, cy - 72.0, 48.0, th->ink);
         dd_canvas_text_center(cv, (DDRect){cx - 240.0, cy - 12.0, 480.0, 32.0}, "Map every byte on your system", 21.0, true, false, th->text);
         dd_canvas_text_center(cv, (DDRect){cx - 240.0, cy + 22.0, 480.0, 22.0}, "Choose your Home folder or any directory to explore 9 interactive views.", 13.0, false, false, th->text_secondary);
         draw_ink_button(cv, th, (DDRect){cx - 148.0, cy + 62.0, 140.0, 38.0}, "Scan Home", ACT_SCAN_HOME, 0, 0, NULL);
         draw_outline_button(cv, th, (DDRect){cx + 8.0, cy + 62.0, 140.0, 38.0}, "Choose Folder...", false, ACT_SCAN_PICK, 0, 0, NULL);
+
+        if (st->monitor.volume_count > 0) {
+            double vy = cy + 130.0;
+            dd_canvas_text_center(cv, (DDRect){cx - 200.0, vy, 400.0, 20.0}, "OR SELECT A DETECTED DRIVE", 11.0, true, false, th->text_tertiary);
+            vy += 26.0;
+
+            int n_vol = (st->monitor.volume_count < 6) ? st->monitor.volume_count : 6;
+            double card_w = 260.0;
+            double card_h = 76.0;
+            double gap = 14.0;
+            int cols = (main_r.w >= 880.0) ? 3 : (main_r.w >= 600.0 ? 2 : 1);
+            if (cols > n_vol) cols = n_vol;
+            if (cols < 1) cols = 1;
+
+            double total_grid_w = cols * card_w + (cols - 1) * gap;
+            double start_x = cx - total_grid_w * 0.5;
+
+            for (int i = 0; i < n_vol; i++) {
+                int r = i / cols;
+                int c = i % cols;
+                DDRect card_r = {start_x + c * (card_w + gap), vy + r * (card_h + gap), card_w, card_h};
+                const DDVolumeInfo *v = &st->monitor.volumes[i];
+
+                dd_canvas_round_rect(cv, card_r, 8.0, th->card, th->border, 1.0);
+                dd_canvas_draw_icon(cv, ICON_TRAY, card_r.x + 12.0, card_r.y + 12.0, 18.0, th->ink);
+
+                dd_canvas_text_clipped(cv, (DDRect){card_r.x + 36.0, card_r.y + 10.0, card_r.w - 44.0, 18.0}, v->name, 13.0, true, false, th->text);
+                dd_canvas_text_clipped(cv, (DDRect){card_r.x + 36.0, card_r.y + 28.0, card_r.w - 44.0, 14.0}, v->mount_path, 10.5, false, true, th->text_secondary);
+
+                double ratio = (v->total_bytes > 0) ? ((double)v->used_bytes / (double)v->total_bytes) : 0.0;
+                DDRect bar_track = {card_r.x + 12.0, card_r.y + 48.0, card_r.w - 24.0, 6.0};
+                dd_canvas_round_rect(cv, bar_track, 3.0, th->track, (DDColor){0,0,0,0}, 0.0);
+                DDRect bar_fill = {card_r.x + 12.0, card_r.y + 48.0, bar_track.w * ratio, 6.0};
+                dd_canvas_round_rect(cv, bar_fill, 3.0, (ratio > 0.9) ? th->used : th->ink, (DDColor){0,0,0,0}, 0.0);
+
+                char f_buf[32], t_buf[32], stat_lbl[80];
+                dd_format_bytes(v->free_bytes, f_buf, sizeof(f_buf));
+                dd_format_bytes(v->total_bytes, t_buf, sizeof(t_buf));
+                snprintf(stat_lbl, sizeof(stat_lbl), "%s free of %s", f_buf, t_buf);
+                dd_canvas_text_clipped(cv, (DDRect){card_r.x + 12.0, card_r.y + 57.0, card_r.w - 24.0, 14.0}, stat_lbl, 9.5, false, false, th->text_secondary);
+
+                dd_canvas_register_hit(cv, ACT_SCAN_RECENT, i, 0, v->mount_path, v->name, card_r, true);
+            }
+        }
         return;
     }
 
