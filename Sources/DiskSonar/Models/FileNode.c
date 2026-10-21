@@ -1725,12 +1725,17 @@ bool dd_snapshots_take(DDSnapshotStore *store, const DDFileTree *tree) {
     fprintf(f, "\n  ]\n}\n");
     fclose(f);
 
-    int idx = 0;
     if (store->count < 128) {
-        idx = store->count;
+        for (int i = store->count; i > 0; i--) {
+            store->summaries[i] = store->summaries[i - 1];
+        }
         store->count++;
+    } else {
+        for (int i = 127; i > 0; i--) {
+            store->summaries[i] = store->summaries[i - 1];
+        }
     }
-    DDSnapshotSummary *s = &store->summaries[idx];
+    DDSnapshotSummary *s = &store->summaries[0];
     snprintf(s->id, sizeof(s->id), "%s", id);
     snprintf(s->root_path, sizeof(s->root_path), "%s", tree->root_path);
     s->timestamp = now;

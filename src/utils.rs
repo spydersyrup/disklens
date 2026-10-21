@@ -14,23 +14,25 @@ pub fn now_seconds() -> f64 {
 }
 
 pub fn format_bytes(bytes: i64) -> String {
-    let abs = bytes.abs() as f64;
-    if abs < 1000.0 {
-        return format!("{} B", bytes);
+    let neg = bytes < 0;
+    let abs = bytes.unsigned_abs();
+    let sign = if neg { "-" } else { "" };
+    if abs < 1000 {
+        return format!("{}{} B", sign, abs);
     }
     let units = ["B", "KB", "MB", "GB", "TB", "PB"];
-    let mut val = abs;
+    let mut val = abs as f64;
     let mut u = 0usize;
     while val >= 999.5 && u < 5 {
         val /= 1000.0;
         u += 1;
     }
     if val >= 100.0 {
-        format!("{:.0} {}", val, units[u])
+        format!("{}{:.0} {}", sign, val, units[u])
     } else if val >= 10.0 {
-        format!("{:.1} {}", val, units[u])
+        format!("{}{:.1} {}", sign, val, units[u])
     } else {
-        format!("{:.2} {}", val, units[u])
+        format!("{}{:.2} {}", sign, val, units[u])
     }
 }
 
@@ -291,14 +293,25 @@ pub fn sha256_file_bounded(path: &Path, max_bytes: i64, nocache: bool) -> Option
     let mut buf = vec![0u8; buf_sz];
     let mut total_read = 0i64;
 
-    while total_read < max_bytes {
-        let to_read = buf_sz.min((max_bytes - total_read) as usize);
-        let n = f.read(&mut buf[..to_read]).ok()?;
-        if n == 0 {
-            break;
+    if max_bytes <= 0 {
+        loop {
+            let n = f.read(&mut buf).ok()?;
+            if n == 0 {
+                break;
+            }
+            hasher.update(&buf[..n]);
+            total_read += n as i64;
         }
-        hasher.update(&buf[..n]);
-        total_read += n as i64;
+    } else {
+        while total_read < max_bytes {
+            let to_read = buf_sz.min((max_bytes - total_read) as usize);
+            let n = f.read(&mut buf[..to_read]).ok()?;
+            if n == 0 {
+                break;
+            }
+            hasher.update(&buf[..n]);
+            total_read += n as i64;
+        }
     }
 
     #[cfg(unix)]
