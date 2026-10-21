@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include "Utils.h"
+#include "../Models/Models.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -643,4 +644,154 @@ void dd_get_root_dir(char *out_path, size_t cap) {
 #else
     snprintf(out_path, cap, "/");
 #endif
+}
+
+static void write_json_escaped(FILE *f, const char *s) {
+    if (!s) return;
+    for (const char *p = s; *p; p++) {
+        if (*p == '"') fputs("\\\"", f);
+        else if (*p == '\\') fputs("\\\\", f);
+        else if (*p == '\n') fputs("\\n", f);
+        else if (*p == '\r') fputs("\\r", f);
+        else if (*p == '\t') fputs("\\t", f);
+        else if ((unsigned char)*p >= 32) fputc(*p, f);
+    }
+}
+
+bool dd_export_tree_json(const DDFileTree *tree, const char *out_path) {
+    if (!tree || !out_path || !*out_path) return false;
+    FILE *f = fopen(out_path, "w");
+    if (!f) return false;
+
+    fprintf(f, "{\n");
+    fprintf(f, "  \"generator\": \"DiskSonar\",\n");
+    fprintf(f, "  \"version\": \"1.0.0\",\n");
+    fprintf(f, "  \"root\": \"");
+    write_json_escaped(f, tree->root_path);
+    fprintf(f, "\",\n");
+    fprintf(f, "  \"scan_duration_sec\": %.3f,\n", tree->scan_duration);
+    fprintf(f, "  \"total_items\": %d,\n", tree->node_count);
+    fprintf(f, "  \"total_folders\": %d,\n", tree->folder_count);
+    fprintf(f, "  \"logical_size_bytes\": %lld,\n", (long long)(tree->node_count > 0 ? tree->nodes[0].logical_size : 0));
+    fprintf(f, "  \"size_on_disk_bytes\": %lld,\n", (long long)(tree->node_count > 0 ? tree->nodes[0].size_on_disk : 0));
+    fprintf(f, "  \"categories\": {\n");
+    for (int c = 0; c < CAT_COUNT; c++) {
+        int64_t sz = (tree->folder_count > 0) ? tree->folders[0].type_sizes[c] : 0;
+        fprintf(f, "    \"%s\": %lld%s\n", dd_category_name((DDFileCategory)c), (long long)sz, (c + 1 < CAT_COUNT) ? "," : "");
+    }
+    fprintf(f, "  },\n");
+    fprintf(f, "  \"nodes\": [\n");
+
+    char path_buf[512];
+    for (int32_t i = 0; i < tree->node_count; i++) {
+        const DDFileNode *n = &tree->nodes[i];
+        dd_node_build_path(tree, i, path_buf, sizeof(path_buf));
+        fprintf(f, "    {\"id\":%d,\"parent\":%d,\"is_dir\":%s,\"cat\":\"%s\",\"size\":%lld,\"disk_size\":%lld,\"mtime\":%.3f,\"path\":\"",
+                i, n->parent_idx, n->is_directory ? "true" : "false",
+                dd_category_name((DDFileCategory)n->category),
+                (long long)n->logical_size, (long long)n->size_on_disk, n->modified_stamp);
+        write_json_escaped(f, path_buf);
+        fprintf(f, "\"}%s\n", (i + 1 < tree->node_count) ? "," : "");
+    }
+    fprintf(f, "  ]\n}\n");
+    fclose(f);
+    return true;
+}
+
+bool dd_export_tree_csv(const DDFileTree *tree, const char *out_path) {
+    if (!tree || !out_path || !*out_path) return false;
+    FILE *f = fopen(out_path, "w");
+    if (!f) return false;
+
+    fprintf(f, "id,parent_id,is_directory,category,logical_bytes,size_on_disk,modified_timestamp,path\n");
+    char path_buf[512];
+    for (int32_t i = 0; i < tree->node_count; i++) {
+        const DDFileNode *n = &tree->nodes[i];
+        dd_node_build_path(tree, i, path_buf, sizeof(path_buf));
+        fprintf(f, "%d,%d,%d,%s,%lld,%lld,%.3f,\"",
+                i, n->parent_idx, n->is_directory ? 1 : 0,
+                dd_category_name((DDFileCategory)n->category),
+                (long long)n->logical_size, (long long)n->size_on_disk, n->modified_stamp);
+        for (const char *p = path_buf; *p; p++) {
+            if (*p == '"') fputs("\"\"", f);
+            else fputc(*p, f);
+        }
+        fprintf(f, "\"\n");
+    }
+    fclose(f);
+    return true;
+}
+
+bool dd_export_tree_html(const DDFileTree *tree, const char *out_path) {
+    if (!tree || !out_path || !*out_path) return false;
+    FILE *f = fopen(out_path, "w");
+    if (!f) return false;
+
+    char total_buf[64], disk_buf[64];
+    dd_format_bytes(tree->node_count > 0 ? tree->nodes[0].logical_size : 0, total_buf, sizeof(total_buf));
+    dd_format_bytes(tree->node_count > 0 ? tree->nodes[0].size_on_disk : 0, disk_buf, sizeof(disk_buf));
+
+    fprintf(f, "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n");
+    fprintf(f, "<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0\">\n");
+    fprintf(f, "<title>DiskSonar Report - %s</title>\n", tree->root_path);
+    fprintf(f, "<style>\n");
+    fprintf(f, "* { box-sizing: border-box; margin: 0; padding: 0; }\n");
+    fprintf(f, "body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #18181b; color: #f4f4f5; padding: 24px; line-height: 1.5; }\n");
+    fprintf(f, ".header { margin-bottom: 24px; border-bottom: 1px solid #27272a; padding-bottom: 16px; }\n");
+    fprintf(f, "h1 { font-size: 24px; font-weight: 700; color: #fafafa; margin-bottom: 8px; }\n");
+    fprintf(f, ".stats { display: flex; flex-wrap: wrap; gap: 16px; font-size: 14px; color: #a1a1aa; }\n");
+    fprintf(f, ".stat-card { background: #27272a; padding: 12px 16px; border-radius: 8px; }\n");
+    fprintf(f, ".stat-val { font-size: 18px; font-weight: 600; color: #38bdf8; }\n");
+    fprintf(f, ".cat-bar { display: flex; height: 16px; border-radius: 8px; overflow: hidden; margin: 20px 0; background: #3f3f46; }\n");
+    fprintf(f, ".cat-seg { height: 100%%; }\n");
+    fprintf(f, ".table-container { background: #27272a; border-radius: 8px; overflow: hidden; margin-top: 24px; }\n");
+    fprintf(f, "table { width: 100%%; border-collapse: collapse; text-align: left; font-size: 13px; }\n");
+    fprintf(f, "th { background: #3f3f46; padding: 10px 14px; font-weight: 600; color: #e4e4e7; }\n");
+    fprintf(f, "td { padding: 8px 14px; border-bottom: 1px solid #3f3f46; color: #d4d4d8; font-family: monospace; }\n");
+    fprintf(f, "tr:hover td { background: #323238; }\n");
+    fprintf(f, "</style>\n</head>\n<body>\n");
+    fprintf(f, "<div class=\"header\">\n<h1>DiskSonar Storage Audit</h1>\n");
+    fprintf(f, "<div class=\"stats\">\n");
+    fprintf(f, "<div class=\"stat-card\"><div>Target</div><div class=\"stat-val\">%s</div></div>\n", tree->root_path);
+    fprintf(f, "<div class=\"stat-card\"><div>Logical Size</div><div class=\"stat-val\">%s</div></div>\n", total_buf);
+    fprintf(f, "<div class=\"stat-card\"><div>Size on Disk</div><div class=\"stat-val\">%s</div></div>\n", disk_buf);
+    fprintf(f, "<div class=\"stat-card\"><div>Items Scanned</div><div class=\"stat-val\">%d (%d folders)</div></div>\n", tree->node_count, tree->folder_count);
+    fprintf(f, "<div class=\"stat-card\"><div>Scan Time</div><div class=\"stat-val\">%.3fs</div></div>\n", tree->scan_duration);
+    fprintf(f, "</div></div>\n");
+
+    static const char * const cat_colors[] = {
+        "#fda4af","#c4b5fd","#7dd3fc","#fcd34d","#86efac","#fdba74","#93c5fd","#5eead4","#cbd5e1"
+    };
+
+    fprintf(f, "<div class=\"cat-bar\">\n");
+    int64_t total_sz = (tree->node_count > 0 ? tree->nodes[0].logical_size : 1);
+    for (int c = 0; c < CAT_COUNT; c++) {
+        int64_t sz = (tree->folder_count > 0) ? tree->folders[0].type_sizes[c] : 0;
+        if (sz <= 0) continue;
+        double pct = (double)sz / (double)total_sz * 100.0;
+        fprintf(f, "<div class=\"cat-seg\" style=\"width:%.2f%%;background:%s;\" title=\"%s: %.1f%%\"></div>\n",
+                pct, cat_colors[c], dd_category_name((DDFileCategory)c), pct);
+    }
+    fprintf(f, "</div>\n");
+
+    fprintf(f, "<div class=\"table-container\">\n");
+    fprintf(f, "<table>\n<thead><tr><th>Type</th><th>Category</th><th>Size</th><th>Path</th></tr></thead>\n<tbody>\n");
+
+    char pbuf[512], sbuf[32];
+    int max_rows = (tree->node_count < 500) ? tree->node_count : 500;
+    for (int i = 0; i < max_rows; i++) {
+        const DDFileNode *n = &tree->nodes[i];
+        dd_node_build_path(tree, i, pbuf, sizeof(pbuf));
+        dd_format_bytes(n->logical_size, sbuf, sizeof(sbuf));
+        fprintf(f, "<tr><td>%s</td><td>%s</td><td>%s</td><td>",
+                n->is_directory ? "DIR" : "FILE",
+                dd_category_name((DDFileCategory)n->category), sbuf);
+        write_json_escaped(f, pbuf);
+        fprintf(f, "</td></tr>\n");
+    }
+    fprintf(f, "</tbody></table></div>\n");
+    fprintf(f, "<footer style=\"margin-top:24px;font-size:12px;color:#71717a;\">Generated by DiskSonar 1.0.0</footer>\n");
+    fprintf(f, "</body></html>\n");
+    fclose(f);
+    return true;
 }

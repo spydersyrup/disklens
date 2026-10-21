@@ -101,4 +101,9 @@ bool dd_pick_folder_dialog(char *out_path, size_t cap);
 void dd_get_home_dir(char *out_path, size_t cap);
 void dd_get_root_dir(char *out_path, size_t cap);
 
+#include "../Models/Models.h"
+bool dd_export_tree_json(const DDFileTree *tree, const char *out_path);
+bool dd_export_tree_csv(const DDFileTree *tree, const char *out_path);
+bool dd_export_tree_html(const DDFileTree *tree, const char *out_path);
+
 #endif

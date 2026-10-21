@@ -576,6 +576,9 @@ static void print_cli_usage(const char *prog) {
     printf("  --summary             Print storage summary and category breakdown to terminal\n");
     printf("  --top <N>             Display the top N largest items (default: 15)\n");
     printf("  --exclude, -e <pat>   Exclude patterns or directories during scan\n");
+    printf("  --json <file>         Export full scan hierarchy and metadata to JSON\n");
+    printf("  --csv <file>          Export flat item listing sorted by size to CSV\n");
+    printf("  --html <file>         Generate a self-contained interactive HTML storage report\n");
     printf("  --verify [path]       Run the automated 31-step self-test verification suite\n");
     printf("  --screenshot <out>    Save an offscreen render of the scan to a PNG file\n");
     printf("  -h, --help            Show this help message and exit\n");
@@ -693,6 +696,70 @@ static int run_cli_report(const char *target_dir, int top_count, const char *exc
     return 0;
 }
 
+static int run_scan_and_export(const char *target_dir, const char *json_out, const char *csv_out, const char *html_out, const char *exclude_pattern) {
+    if (!target_dir || !*target_dir) target_dir = ".";
+    printf("DiskSonar: Scanning '%s' for report export...\n", target_dir);
+
+    DDDiskScanner *scanner = dd_scanner_create();
+    if (!scanner) {
+        fprintf(stderr, "Error: Failed to initialize disk scanner.\n");
+        return 1;
+    }
+    if (exclude_pattern && *exclude_pattern) {
+        dd_scanner_add_exclude(scanner, exclude_pattern);
+    }
+    const char *ex_env = getenv("DISKSONAR_EXCLUDE");
+    if (!ex_env || !*ex_env) ex_env = getenv("DISKDUDE_EXCLUDE");
+    if (ex_env && *ex_env) {
+        dd_scanner_add_exclude(scanner, ex_env);
+    }
+
+    dd_scanner_start(scanner, target_dir);
+    while (1) {
+        DDScanProgress prog;
+        dd_scanner_get_progress(scanner, &prog);
+        if (!prog.is_running) break;
+        usleep(20000);
+    }
+    DDFileTree *tree = dd_scanner_take_result(scanner);
+    dd_scanner_destroy(scanner);
+
+    if (!tree || tree->node_count == 0) {
+        fprintf(stderr, "Error: Scan produced no files or directory is unreadable.\n");
+        if (tree) dd_tree_free(tree);
+        return 1;
+    }
+
+    bool success = true;
+    if (json_out) {
+        if (dd_export_tree_json(tree, json_out)) {
+            printf("Exported JSON report -> %s (%d items)\n", json_out, tree->node_count);
+        } else {
+            fprintf(stderr, "Error: Failed to write JSON report to %s\n", json_out);
+            success = false;
+        }
+    }
+    if (csv_out) {
+        if (dd_export_tree_csv(tree, csv_out)) {
+            printf("Exported CSV report  -> %s (%d rows)\n", csv_out, tree->node_count);
+        } else {
+            fprintf(stderr, "Error: Failed to write CSV report to %s\n", csv_out);
+            success = false;
+        }
+    }
+    if (html_out) {
+        if (dd_export_tree_html(tree, html_out)) {
+            printf("Exported HTML report -> %s (standalone interactive report)\n", html_out);
+        } else {
+            fprintf(stderr, "Error: Failed to write HTML report to %s\n", html_out);
+            success = false;
+        }
+    }
+
+    dd_tree_free(tree);
+    return success ? 0 : 1;
+}
+
 #if defined(DISKSONAR_RUST_HOST) || defined(DISKDUDE_RUST_HOST)
 int dd_native_app_main(int argc, char **argv) {
 #else
@@ -704,10 +771,9 @@ int main(int argc, char **argv) {
     const char *target_dir = NULL;
     const char *screenshot_out = NULL;
     const char *cli_exclude = NULL;
-
-    DDAppState state;
-    dd_app_state_init(&state);
-    DDCanvas *cv = dd_canvas_create(1680, 1050);
+    const char *json_out = NULL;
+    const char *csv_out = NULL;
+    const char *html_out = NULL;
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--verify") == 0) {
@@ -717,31 +783,42 @@ int main(int argc, char **argv) {
             screenshot_out = argv[++i];
         } else if ((strcmp(argv[i], "--exclude") == 0 || strcmp(argv[i], "-e") == 0) && i + 1 < argc) {
             cli_exclude = argv[++i];
-            dd_scanner_add_exclude(state.scanner, cli_exclude);
         } else if (strcmp(argv[i], "--summary") == 0) {
             cli_mode = true;
         } else if (strcmp(argv[i], "--top") == 0) {
             cli_mode = true;
             if (i + 1 < argc && argv[i + 1][0] != '-') top_count = atoi(argv[++i]);
+        } else if ((strcmp(argv[i], "--json") == 0 || strcmp(argv[i], "--export") == 0) && i + 1 < argc) {
+            json_out = argv[++i];
+        } else if (strcmp(argv[i], "--csv") == 0 && i + 1 < argc) {
+            csv_out = argv[++i];
+        } else if (strcmp(argv[i], "--html") == 0 && i + 1 < argc) {
+            html_out = argv[++i];
         } else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
             print_cli_usage(argv[0]);
-            dd_canvas_destroy(cv);
-            dd_app_state_destroy(&state);
             return 0;
         } else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
             printf("DiskSonar 1.0.0 (x86_64)\n");
-            dd_canvas_destroy(cv);
-            dd_app_state_destroy(&state);
             return 0;
         } else if (argv[i][0] != '-') {
             target_dir = argv[i];
         }
     }
 
+    if (json_out || csv_out || html_out) {
+        return run_scan_and_export(target_dir ? target_dir : ".", json_out, csv_out, html_out, cli_exclude);
+    }
+
     if (cli_mode) {
-        dd_canvas_destroy(cv);
-        dd_app_state_destroy(&state);
         return run_cli_report(target_dir ? target_dir : ".", top_count, cli_exclude);
+    }
+
+    DDAppState state;
+    dd_app_state_init(&state);
+    DDCanvas *cv = dd_canvas_create(1680, 1050);
+
+    if (cli_exclude) {
+        dd_scanner_add_exclude(state.scanner, cli_exclude);
     }
 
     apply_env_hooks(&state);
