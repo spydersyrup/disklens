@@ -36,6 +36,11 @@ static void apply_env_hooks(DDAppState *st) {
     if (scan_env && *scan_env) {
         dd_app_start_scan(st, scan_env);
     }
+    const char *ex_env = getenv("DISKSONAR_EXCLUDE");
+    if (!ex_env || !*ex_env) ex_env = getenv("DISKDUDE_EXCLUDE");
+    if (ex_env && *ex_env) {
+        dd_scanner_add_exclude(st->scanner, ex_env);
+    }
 }
 
 static const DDHitRegion *find_hit_by_action(const DDCanvas *cv, int action, int param_int) {
@@ -248,6 +253,100 @@ static int run_verification_suite(DDAppState *st, DDCanvas *cv, const char *scan
     }
     dd_canvas_resize(cv, 1680, 1050);
     dd_views_render(st, cv);
+
+    /* Verify exclusion rules and .disksonarignore parsing */
+    {
+        if (!dd_wildcard_match("*.log", "error.log") ||
+            dd_wildcard_match("*.log", "error.txt") ||
+            !dd_wildcard_match("node_modules", "node_modules") ||
+            !dd_wildcard_match("build*", "build-linux") ||
+            dd_wildcard_match("build*", "src")) {
+            fprintf(stderr, "[FAIL] Wildcard pattern matcher failed\n");
+            return 1;
+        }
+
+        DDDiskScanner *sc = dd_scanner_create();
+        dd_scanner_add_exclude(sc, "node_modules,*.tmp,cache*");
+        if (!dd_scanner_is_excluded(sc, "node_modules", true) ||
+            !dd_scanner_is_excluded(sc, "scratch.tmp", false) ||
+            !dd_scanner_is_excluded(sc, "cache_dir", true) ||
+            dd_scanner_is_excluded(sc, "source.c", false)) {
+            fprintf(stderr, "[FAIL] dd_scanner_is_excluded pattern check failed\n");
+            dd_scanner_destroy(sc);
+            return 1;
+        }
+
+#ifdef _WIN32
+        const char *tdir = "C:\\Temp\\disksonar_ignore_test";
+        CreateDirectoryA("C:\\Temp", NULL);
+        CreateDirectoryA(tdir, NULL);
+        char ifile[512], kfile[512], sfile[512], ifolder[512], isubfile[512];
+        snprintf(ifile, sizeof(ifile), "%s\\.disksonarignore", tdir);
+        snprintf(kfile, sizeof(kfile), "%s\\keep.txt", tdir);
+        snprintf(sfile, sizeof(sfile), "%s\\omit.skip", tdir);
+        snprintf(ifolder, sizeof(ifolder), "%s\\ignored_dir", tdir);
+        snprintf(isubfile, sizeof(isubfile), "%s\\ignored_dir\\hidden.txt", tdir);
+        CreateDirectoryA(ifolder, NULL);
+#else
+        const char *tdir = "/tmp/disksonar_ignore_test";
+        system("rm -rf /tmp/disksonar_ignore_test && mkdir -p /tmp/disksonar_ignore_test/ignored_dir");
+        char ifile[512], kfile[512], sfile[512], isubfile[512];
+        snprintf(ifile, sizeof(ifile), "%s/.disksonarignore", tdir);
+        snprintf(kfile, sizeof(kfile), "%s/keep.txt", tdir);
+        snprintf(sfile, sizeof(sfile), "%s/omit.skip", tdir);
+        snprintf(isubfile, sizeof(isubfile), "%s/ignored_dir/hidden.txt", tdir);
+#endif
+        FILE *f_ign = fopen(ifile, "w");
+        if (f_ign) {
+            fprintf(f_ign, "# Test ignore file\nignored_dir/\n*.skip\n");
+            fclose(f_ign);
+        }
+        FILE *f_k = fopen(kfile, "w");
+        if (f_k) { fprintf(f_k, "hello world\n"); fclose(f_k); }
+        FILE *f_s = fopen(sfile, "w");
+        if (f_s) { fprintf(f_s, "skip me\n"); fclose(f_s); }
+        FILE *f_sub = fopen(isubfile, "w");
+        if (f_sub) { fprintf(f_sub, "secret\n"); fclose(f_sub); }
+
+        dd_scanner_start(sc, tdir);
+        DDScanProgress prog;
+        do {
+#ifdef _WIN32
+            Sleep(10);
+#else
+            usleep(10000);
+#endif
+            dd_scanner_get_progress(sc, &prog);
+        } while (prog.is_running);
+
+        DDFileTree *tt = dd_scanner_take_result(sc);
+        if (!tt || tt->node_count < 2) {
+            fprintf(stderr, "[FAIL] Test tree failed to scan\n");
+            dd_scanner_destroy(sc);
+            return 1;
+        }
+
+        bool found_keep = false, found_skip = false, found_dir = false;
+        for (int32_t i = 0; i < tt->node_count; i++) {
+            const char *n = dd_node_name(tt, i);
+            if (strcmp(n, "keep.txt") == 0) found_keep = true;
+            if (strcmp(n, "omit.skip") == 0) found_skip = true;
+            if (strcmp(n, "ignored_dir") == 0) found_dir = true;
+        }
+
+        dd_tree_free(tt);
+        dd_scanner_destroy(sc);
+#ifndef _WIN32
+        system("rm -rf /tmp/disksonar_ignore_test");
+#endif
+
+        if (!found_keep || found_skip || found_dir) {
+            fprintf(stderr, "[FAIL] Ignore filter test failed (keep=%d, skip=%d, dir=%d)\n", found_keep, found_skip, found_dir);
+            return 1;
+        }
+        printf("[PASS] Exclusion rules and .disksonarignore filters -> correctly excluded patterns and ignore files\n");
+    }
+
     return 0;
 }
 
@@ -478,18 +577,21 @@ int main(int argc, char **argv) {
     const char *verify_dir = ".";
     const char *screenshot_out = NULL;
 
+    DDAppState state;
+    dd_app_state_init(&state);
+    DDCanvas *cv = dd_canvas_create(1680, 1050);
+
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--verify") == 0) {
             verify_mode = true;
             if (i + 1 < argc && argv[i + 1][0] != '-') verify_dir = argv[++i];
         } else if (strcmp(argv[i], "--screenshot") == 0 && i + 1 < argc) {
             screenshot_out = argv[++i];
+        } else if ((strcmp(argv[i], "--exclude") == 0 || strcmp(argv[i], "-e") == 0) && i + 1 < argc) {
+            dd_scanner_add_exclude(state.scanner, argv[++i]);
         }
     }
 
-    DDAppState state;
-    dd_app_state_init(&state);
-    DDCanvas *cv = dd_canvas_create(1680, 1050);
     apply_env_hooks(&state);
 
     if (verify_mode) {
