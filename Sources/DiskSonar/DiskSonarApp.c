@@ -711,6 +711,10 @@ int main(int argc, char **argv) {
                 else if (ks == XK_Return || ks == XK_KP_Enter) kc = 13;
                 else if (ks == XK_Escape) kc = 27;
                 else if (ks == XK_BackSpace) kc = 8;
+                else if (ks == XK_Left) kc = 37;
+                else if (ks == XK_Up) kc = 38;
+                else if (ks == XK_Right) kc = 39;
+                else if (ks == XK_Down) kc = 40;
                 else if (ctrl && (ks == XK_k || ks == XK_K || ks == XK_f || ks == XK_F)) kc = 11;
 
                 uint32_t ch = (unsigned char)kbuf[0];
