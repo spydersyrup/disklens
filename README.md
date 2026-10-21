@@ -81,4 +81,16 @@ DISKSONAR_SCAN=/home ./dist/disksonar
 
 # Launch directly into a specific view
 DISKSONAR_MODE=Treemap ./dist/disksonar
+
+# Exclude specific folders, extensions, or patterns
+./dist/disksonar --exclude "node_modules,target,*.tmp,.cache"
 ```
+
+## Exclusion Rules and Ignore Files
+
+DiskSonar supports ignoring files and directories during scanning:
+
+- **`.disksonarignore` files**: Place a `.disksonarignore` (or `.disklensignore` / `.diskdudeignore`) file in any directory to exclude patterns relative to that folder. Blank lines and lines starting with `#` are ignored. Append `/` to match directories specifically (e.g. `build/`).
+- **Command-line flag**: Pass `--exclude <pattern>` (or `-e`) to exclude comma-separated glob patterns or names (e.g. `--exclude "node_modules,target,*.log"`).
+- **Environment variable**: Set `DISKSONAR_EXCLUDE="pattern1,pattern2"` to apply persistent ignore rules.
+- **Kernel filesystem guards**: Linux pseudo-filesystems such as `/proc`, `/sys`, `/dev`, and `/run` are automatically skipped to avoid kernel deadlocks.
