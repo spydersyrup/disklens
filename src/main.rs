@@ -33,6 +33,7 @@ mod tests {
     };
     use std::fs::File;
     use std::io::Write;
+    use std::path::Path;
 
     #[test]
     fn test_formatters_and_categories() {
@@ -41,7 +42,6 @@ mod tests {
         assert_eq!(format_bytes(1000), "1.00 KB");
         assert_eq!(format_bytes(12_345_678), "12.3 MB");
         assert_eq!(format_bytes(-12_345_678), "-12.3 MB");
-        // Check i64::MIN does not overflow or panic
         let min_s = format_bytes(i64::MIN);
         assert!(min_s.starts_with("-"), "format_bytes(i64::MIN) must be negative");
 
@@ -91,21 +91,26 @@ mod tests {
             FileCategory::classify_bytes(b"anyfile", true),
             FileCategory::Apps
         );
+
+        let digest =
+            sha256_file_bounded(Path::new("Cargo.toml"), 65536, true).expect("hash Cargo.toml");
+        assert_eq!(sha256_hex(&digest).len(), 64);
+        let digest_full =
+            sha256_file_bounded(Path::new("Cargo.toml"), 0, true).expect("hash Cargo.toml full");
+        assert_eq!(sha256_hex(&digest_full).len(), 64);
     }
 
     #[test]
     fn test_duplicate_hashing_same_size_different_content() {
-        let dir = std::env::temp_dir().join(format!("disklens_test_{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("disksonar_test_{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
 
         let path_a = dir.join("file_a.dat");
         let path_b = dir.join("file_b.dat");
 
-        // 128 KB files: both share the exact same first 64 KB, but differ at offset 70,000
         let file_len = 128 * 1024;
         let mut data_a = vec![0x42u8; file_len];
         let mut data_b = vec![0x42u8; file_len];
-        // Mutate beyond 64KB
         data_a[70_000] = 0xAA;
         data_b[70_000] = 0xBB;
 
@@ -116,7 +121,6 @@ mod tests {
             fb.write_all(&data_b).expect("write file_b");
         }
 
-        // Bounded hash (max_bytes = 65536) only inspects first 64KB -> hashes MUST match
         let bound_a = sha256_file_bounded(&path_a, 65536, false).expect("hash bound a");
         let bound_b = sha256_file_bounded(&path_b, 65536, false).expect("hash bound b");
         assert_eq!(
@@ -124,7 +128,6 @@ mod tests {
             "Bounded hashing of first 64KB should match when prefixes are identical"
         );
 
-        // Full-file hash (max_bytes = 0 or negative) reads full file -> hashes MUST NOT match!
         let full_a = sha256_file_bounded(&path_a, 0, false).expect("hash full a");
         let full_b = sha256_file_bounded(&path_b, 0, false).expect("hash full b");
         assert_ne!(
@@ -132,7 +135,6 @@ mod tests {
             "CRITICAL: Full hashing (max_bytes=0) must distinguish files with different bodies!"
         );
 
-        // Negative max_bytes also acts as unlimited
         let full_a_neg = sha256_file_bounded(&path_a, -1, false).expect("hash full a neg");
         assert_eq!(full_a, full_a_neg, "max_bytes < 0 must behave identically to max_bytes = 0");
 
@@ -143,20 +145,16 @@ mod tests {
 
     #[test]
     fn test_duplicate_hashing_identical_samples_different_middle() {
-        let dir = std::env::temp_dir().join(format!("disklens_sample_test_{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("disksonar_sample_test_{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
 
         let path_a = dir.join("sample_a.dat");
         let path_b = dir.join("sample_b.dat");
 
-        // 300 KB files (> max_bytes * 2 when max_bytes = 65536)
-        // sha256_file_bounded with max_bytes = 65536 samples:
-        // offset 0 (chunk = 32768), offset 150_000 (chunk = 32768), and tail offset (300000 - 32768)
         let file_len = 300 * 1024;
         let mut data_a = vec![0x11u8; file_len];
         let mut data_b = vec![0x11u8; file_len];
 
-        // Put differing content in an UNSAMPLED region (e.g. offset 50_000, which is after head 32KB and before mid 150KB)
         data_a[50_000] = 0xFE;
         data_b[50_000] = 0xCA;
 
@@ -167,7 +165,6 @@ mod tests {
             fb.write_all(&data_b).expect("write sample_b");
         }
 
-        // Bounded sample hash matches because sampled regions (0..32k, 150k..182k, 267k..300k) are identical
         let bound_a = sha256_file_bounded(&path_a, 65536, false).expect("hash sample bound a");
         let bound_b = sha256_file_bounded(&path_b, 65536, false).expect("hash sample bound b");
         assert_eq!(
@@ -175,7 +172,6 @@ mod tests {
             "Sampled chunk hashes must match when sampled regions are identical"
         );
 
-        // Full file hash MUST differ
         let full_a = sha256_file_bounded(&path_a, 0, false).expect("hash sample full a");
         let full_b = sha256_file_bounded(&path_b, 0, false).expect("hash sample full b");
         assert_ne!(
@@ -190,7 +186,7 @@ mod tests {
 
     #[test]
     fn test_hashing_empty_file() {
-        let dir = std::env::temp_dir().join(format!("disklens_empty_test_{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("disksonar_empty_test_{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
         let path = dir.join("empty.dat");
         File::create(&path).expect("create empty file");
@@ -207,19 +203,16 @@ mod tests {
     #[test]
     fn test_atomic_file_write_and_overwrite() {
         use crate::utils::write_file_atomic;
-        let dir = std::env::temp_dir().join(format!("disklens_atomic_test_{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("disksonar_atomic_test_{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
         let target = dir.join("atomic_target.txt");
 
-        // First write creates file
         assert!(write_file_atomic(&target, b"initial payload"));
         assert_eq!(std::fs::read_to_string(&target).unwrap(), "initial payload");
 
-        // Second write safely replaces content
         assert!(write_file_atomic(&target, b"updated payload"));
         assert_eq!(std::fs::read_to_string(&target).unwrap(), "updated payload");
 
-        // Write to nonexistent directory fails safely without panic
         let bad_target = dir.join("nonexistent_sub").join("target.txt");
         assert!(!write_file_atomic(&bad_target, b"data"));
 
@@ -232,12 +225,10 @@ mod tests {
         use crate::utils::dd_exec_sync;
         use std::ffi::CString;
 
-        // Null pointer safety
         unsafe {
             assert!(!dd_exec_sync(std::ptr::null(), std::ptr::null(), std::ptr::null(), std::ptr::null()));
         }
 
-        // Nonexistent executable returns false safely without panic
         let bad_cmd = CString::new("this_cmd_absolutely_does_not_exist_xyz123").unwrap();
         unsafe {
             assert!(!dd_exec_sync(bad_cmd.as_ptr(), std::ptr::null(), std::ptr::null(), std::ptr::null()));

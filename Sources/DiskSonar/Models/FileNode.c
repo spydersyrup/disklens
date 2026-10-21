@@ -18,6 +18,7 @@
 #include <io.h>
 #else
 #include <unistd.h>
+#include <fcntl.h>
 #include <dirent.h>
 #include <pthread.h>
 #include <signal.h>
@@ -653,22 +654,7 @@ static void trash_percent_encode(const char *src, char *dst, size_t dst_cap) {
     }
     dst[d] = '\0';
 }
-#endif
 
-static bool move_single_to_trash(const char *path) {
-#ifdef _WIN32
-    DWORD attr = GetFileAttributesA(path);
-    if (attr == INVALID_FILE_ATTRIBUTES) return true;
-    char dbl_null[520];
-    memset(dbl_null, 0, sizeof(dbl_null));
-    snprintf(dbl_null, sizeof(dbl_null) - 2, "%s", path);
-    SHFILEOPSTRUCTA op;
-    memset(&op, 0, sizeof(op));
-    op.wFunc = FO_DELETE;
-    op.pFrom = dbl_null;
-    op.fFlags = FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_NOERRORUI | FOF_SILENT;
-    return SHFileOperationA(&op) == 0;
-#else
 static void safe_cleanup_trash_dest(const char *dest_file, const char *trash_files_dir, const char *src_path) {
     if (!dest_file || !*dest_file || !trash_files_dir || !*trash_files_dir) {
         return;
@@ -692,7 +678,22 @@ static void safe_cleanup_trash_dest(const char *dest_file, const char *trash_fil
         unlink(dest_file);
     }
 }
+#endif
 
+static bool move_single_to_trash(const char *path) {
+#ifdef _WIN32
+    DWORD attr = GetFileAttributesA(path);
+    if (attr == INVALID_FILE_ATTRIBUTES) return true;
+    char dbl_null[520];
+    memset(dbl_null, 0, sizeof(dbl_null));
+    snprintf(dbl_null, sizeof(dbl_null) - 2, "%s", path);
+    SHFILEOPSTRUCTA op;
+    memset(&op, 0, sizeof(op));
+    op.wFunc = FO_DELETE;
+    op.pFrom = dbl_null;
+    op.fFlags = FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_NOERRORUI | FOF_SILENT;
+    return SHFileOperationA(&op) == 0;
+#else
     struct stat st;
     if (lstat(path, &st) != 0) {
         return errno == ENOENT;
@@ -786,7 +787,7 @@ static void safe_cleanup_trash_dest(const char *dest_file, const char *trash_fil
                 return true;
             }
             /* Safe copy without overwrite fallback */
-            if (dd_exec_sync("cp", "-a", "--no-clobber", path, dest_file)) {
+            if (dd_exec_sync("cp", "-an", path, dest_file)) {
                 struct stat verify_dst;
                 if (lstat(dest_file, &verify_dst) == 0) {
                     if (S_ISDIR(st.st_mode)) {
@@ -1789,18 +1790,6 @@ static void get_snapshots_dir(char *buf, size_t cap) {
 static void sanitize_json_str(char *s) {
     for (; *s; s++) {
         if (*s == '"' || *s == '\n' || *s == '\r') *s = '\'';
-    }
-}
-
-static void write_json_escaped_to_file(FILE *f, const char *s) {
-    if (!s) return;
-    for (const char *p = s; *p; p++) {
-        if (*p == '"') fputs("\\\"", f);
-        else if (*p == '\\') fputs("\\\\", f);
-        else if (*p == '\n') fputs("\\n", f);
-        else if (*p == '\r') fputs("\\r", f);
-        else if (*p == '\t') fputs("\\t", f);
-        else if ((unsigned char)*p >= 32) fputc(*p, f);
     }
 }
 

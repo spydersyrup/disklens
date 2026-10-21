@@ -341,11 +341,11 @@ pub fn resolve_data_dir(subdir: &str) -> PathBuf {
     #[cfg(windows)]
     {
         if let Ok(appdata) = env::var("APPDATA") {
-            let dir = PathBuf::from(&appdata).join("DiskLens").join(subdir);
+            let dir = PathBuf::from(&appdata).join("DiskSonar").join(subdir);
             if fs::create_dir_all(&dir).is_ok() {
                 return dir;
             }
-            let legacy = PathBuf::from(&appdata).join("DiskDude").join(subdir);
+            let legacy = PathBuf::from(&appdata).join("DiskLens").join(subdir);
             if fs::create_dir_all(&legacy).is_ok() {
                 return legacy;
             }
@@ -357,11 +357,11 @@ pub fn resolve_data_dir(subdir: &str) -> PathBuf {
             let base = if subdir == "Trash/files" || subdir == "Trash/info" {
                 PathBuf::from(home).join(".local/share").join(subdir)
             } else {
-                let lens = PathBuf::from(&home).join(".local/share/DiskLens").join(subdir);
-                if fs::create_dir_all(&lens).is_ok() {
-                    lens
+                let sonar = PathBuf::from(&home).join(".local/share/DiskSonar").join(subdir);
+                if fs::create_dir_all(&sonar).is_ok() {
+                    sonar
                 } else {
-                    PathBuf::from(&home).join(".local/share/DiskDude").join(subdir)
+                    PathBuf::from(&home).join(".local/share/DiskLens").join(subdir)
                 }
             };
             if fs::create_dir_all(&base).is_ok() {
@@ -369,7 +369,7 @@ pub fn resolve_data_dir(subdir: &str) -> PathBuf {
             }
         }
     }
-    let fallback = PathBuf::from("/tmp/DiskLens").join(subdir);
+    let fallback = PathBuf::from("/tmp/DiskSonar").join(subdir);
     let _ = fs::create_dir_all(&fallback);
     fallback
 }

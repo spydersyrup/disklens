@@ -1,5 +1,5 @@
-#ifndef DISKDUDE_CANVAS_H
-#define DISKDUDE_CANVAS_H
+#ifndef DISKSONAR_CANVAS_H
+#define DISKSONAR_CANVAS_H
 
 #include "../Theme/Theme.h"
 #include <stdbool.h>

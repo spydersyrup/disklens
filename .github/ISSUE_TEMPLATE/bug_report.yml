@@ -1,5 +1,5 @@
 name: Bug Report
-description: Report a defect, crash, or unexpected behavior in DiskLens
+description: Report a defect, crash, or unexpected behavior in DiskSonar
 labels: ["bug"]
 body:
   - type: markdown
@@ -16,7 +16,7 @@ body:
   - type: input
     id: version
     attributes:
-      label: DiskLens Version or Commit SHA
+      label: DiskSonar Version or Commit SHA
       placeholder: e.g. v1.0.0 or commit hash
     validations:
       required: true
@@ -33,7 +33,7 @@ body:
       label: Steps to reproduce
       description: Exact steps or command line arguments that trigger the issue.
       placeholder: |
-        1. Run ./dist/disklens
+        1. Run ./dist/disksonar
         2. Click 'Choose Folder' and select /path/to/folder
         3. Switch to 'Duplicates' tab
     validations:

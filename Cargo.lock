@@ -3,5 +3,5 @@
 version = 4
 
 [[package]]
-name = "diskdude"
+name = "disksonar"
 version = "1.0.0"

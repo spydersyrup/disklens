@@ -1,5 +1,5 @@
-#ifndef DISKDUDE_SCANNER_H
-#define DISKDUDE_SCANNER_H
+#ifndef DISKSONAR_SCANNER_H
+#define DISKSONAR_SCANNER_H
 
 #include "../Models/Models.h"
 #include <stdbool.h>
@@ -25,5 +25,10 @@ void dd_scanner_get_progress(DDDiskScanner *scanner, DDScanProgress *out_progres
 DDFileTree *dd_scanner_take_result(DDDiskScanner *scanner);
 
 int64_t dd_scanner_allocated_size(const char *path);
+
+void dd_scanner_add_exclude(DDDiskScanner *scanner, const char *pattern);
+void dd_scanner_clear_excludes(DDDiskScanner *scanner);
+bool dd_scanner_is_excluded(DDDiskScanner *scanner, const char *name, bool is_dir);
+bool dd_wildcard_match(const char *pat, const char *str);
 
 #endif

@@ -4,7 +4,7 @@
 #include <math.h>
 #include <string.h>
 
-/* Generates a crisp 512x512 RGBA icon for DiskDude (squircle dark card with a 4-segment
+/* Generates a crisp 512x512 RGBA icon for DiskSonar (squircle dark card with a 4-segment
  * sunburst ring and a 3x2 mini treemap below) and writes both a valid PNG and a Windows .ico file. */
 
 static uint32_t crc_table[256];
@@ -170,7 +170,7 @@ static void render_icon(uint8_t *rgba, int size) {
 }
 
 int main(int argc, char **argv) {
-    const char *png_out = (argc > 1) ? argv[1] : "Packaging/Icon/diskdude.png";
+    const char *png_out = (argc > 1) ? argv[1] : "Packaging/Icon/disksonar.png";
     uint8_t *rgba = (uint8_t *)calloc(512 * 512 * 4, 1);
     if (!rgba) return 1;
     render_icon(rgba, 512);

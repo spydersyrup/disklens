@@ -9,7 +9,7 @@
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in DiskLens, please report it responsibly rather than opening a public issue.
+If you discover a security vulnerability in DiskSonar, please report it responsibly rather than opening a public issue.
 
 You can report security concerns through GitHub Private Vulnerability Reporting on this repository, or by emailing the project maintainer at `spydersyrup@gmail.com`.
 

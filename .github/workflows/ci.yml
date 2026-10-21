@@ -6,9 +6,6 @@ on:
   pull_request:
     branches: [ main ]
 
-permissions:
-  contents: read
-
 jobs:
   linux-build-and-test:
     name: Linux Build & Verification

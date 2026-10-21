@@ -1,5 +1,5 @@
-#ifndef DISKDUDE_VIEWS_H
-#define DISKDUDE_VIEWS_H
+#ifndef DISKSONAR_VIEWS_H
+#define DISKSONAR_VIEWS_H
 
 #include "../Theme/Theme.h"
 #include "../Utils/Utils.h"

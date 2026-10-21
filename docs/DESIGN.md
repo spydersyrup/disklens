@@ -1,7 +1,7 @@
-# DiskDude Design Direction
+# DiskSonar Design Direction
 
 ## Identity & Purpose
-- **Product**: DiskDude, a native Linux and Windows disk-space analyzer, duplicate finder, app leftover cleaner, system monitor, and snapshot comparison tool.
+- **Product**: DiskSonar, a native Linux and Windows disk-space analyzer, duplicate finder, app leftover cleaner, system monitor, and snapshot comparison tool.
 - **Audience**: Developers, power users, and desktop users on Linux and Windows who want fast, honest visibility into storage consumption without risking accidental permanent deletion.
 - **Design Read**: Native desktop disk-space analyzer utility for Linux and Windows users, in a high-contrast tactile utility style, dial `ENERGY 2 / RHYTHM 2 / MOTION 1`.
 - **Dial**: `ENERGY 2 / RHYTHM 2 / MOTION 1`

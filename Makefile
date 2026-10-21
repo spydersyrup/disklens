@@ -1,5 +1,15 @@
-CARGO ?= cargo
-CARGOFLAGS ?= --release
+CC ?= gcc
+WINCC ?= x86_64-w64-mingw32-gcc
+CFLAGS ?= -std=c11 -O2 -Wall -Wextra -Wno-unused-parameter -Wno-format-truncation
+
+SRCS = \
+	Sources/DiskSonar/DiskSonarApp.c \
+	Sources/DiskSonar/Theme/Theme.c \
+	Sources/DiskSonar/Utils/Utils.c \
+	Sources/DiskSonar/Utils/Canvas.c \
+	Sources/DiskSonar/Models/FileNode.c \
+	Sources/DiskSonar/Scanning/DiskScanner.c \
+	Sources/DiskSonar/Views/Views.c
 
 .PHONY: all linux windows run app package icon verify clean
 
@@ -7,21 +17,11 @@ all: linux windows
 
 linux:
 	@mkdir -p dist
-	$(CARGO) build $(CARGOFLAGS)
-	@if [ -f target/release/diskdude ]; then \
-		cp -f target/release/diskdude dist/diskdude; \
-	elif [ -f target/release/diskdude.exe ]; then \
-		cp -f target/release/diskdude.exe dist/diskdude.exe; \
-	fi
+	./scripts/build_app.sh
 
 windows:
 	@mkdir -p dist
-	$(CARGO) build $(CARGOFLAGS) --target x86_64-pc-windows-gnu
-	@if [ -f target/x86_64-pc-windows-gnu/release/diskdude.exe ]; then \
-		cp -f target/x86_64-pc-windows-gnu/release/diskdude.exe dist/DiskDude.exe; \
-	elif [ -f target/release/diskdude.exe ]; then \
-		cp -f target/release/diskdude.exe dist/DiskDude.exe; \
-	fi
+	./scripts/build_app.sh
 
 icon:
 	./scripts/make_icon.sh
@@ -33,10 +33,10 @@ package:
 	./scripts/package_app.sh
 
 run: linux
-	@if [ -f dist/diskdude ]; then ./dist/diskdude; else ./dist/diskdude.exe; fi
+	./dist/disksonar
 
 verify: linux
-	@if [ -f dist/diskdude ]; then ./dist/diskdude --verify .; else ./dist/diskdude.exe --verify .; fi
+	./dist/disksonar --verify .
 
 clean:
-	rm -rf dist target/release target/x86_64-pc-windows-gnu/release Packaging/Icon/diskdude.png Packaging/Icon/make_icon_bin
+	rm -rf dist Packaging/Icon/disksonar.png Packaging/Icon/make_icon_bin

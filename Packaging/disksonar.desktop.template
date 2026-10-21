@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=DiskSonar
+GenericName=Disk Space Analyzer
+Comment=Map storage usage across nine views with safe Trash cleanup
+Exec=disksonar
+Icon=disksonar
+Terminal=false
+Categories=System;Filesystem;Utility;
+Keywords=disk;storage;space;treemap;sunburst;duplicates;cleanup;sonar;
+StartupWMClass=DiskSonar

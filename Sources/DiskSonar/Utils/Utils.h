@@ -1,5 +1,5 @@
-#ifndef DISKDUDE_UTILS_H
-#define DISKDUDE_UTILS_H
+#ifndef DISKSONAR_UTILS_H
+#define DISKSONAR_UTILS_H
 
 #include <stdio.h>
 #include <stdbool.h>
