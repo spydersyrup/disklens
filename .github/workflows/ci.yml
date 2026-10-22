@@ -44,7 +44,7 @@ jobs:
       - name: Install MinGW cross-compiler
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc make libx11-dev gcc-mingw-w64-x86-64
+          sudo apt-get install -y gcc make libx11-dev gcc-mingw-w64-x86-64 binutils-mingw-w64-x86-64
 
       - name: Install Rust toolchain with Windows target
         uses: dtolnay/rust-toolchain@stable
@@ -54,7 +54,10 @@ jobs:
       - name: Build Windows executable
         run: make windows
 
-      - name: Verify Windows output artifact
+      - name: Build Windows installer
+        run: ./scripts/build_installer.sh
+
+      - name: Verify Windows output artifacts
         run: |
           test -f dist/*.exe
           ls -lh dist/*.exe

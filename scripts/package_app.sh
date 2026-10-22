@@ -21,10 +21,22 @@ if [ -f "dist/${APP_WIN_EXEC}" ]; then
     mkdir -p "${WIN_STAGE}"
     cp -f "dist/${APP_WIN_EXEC}" "${WIN_STAGE}/${APP_WIN_EXEC}"
     cp -f "Packaging/Icon/disksonar.png" "${WIN_STAGE}/${APP_EXEC}.png"
+    if [ -f "Packaging/Windows/disksonar.ico" ]; then
+        cp -f "Packaging/Windows/disksonar.ico" "${WIN_STAGE}/disksonar.ico"
+    fi
     cp -f "README.md" "${WIN_STAGE}/README.md"
     tar -czf "dist/${APP_NAME}-${VERSION}-windows-x86_64.tar.gz" -C dist "${APP_NAME}-${VERSION}-windows-x86_64"
 fi
 
-sha256sum dist/*.tar.gz > dist/SHA256SUMS.txt
+(
+    cd dist
+    files=( *.tar.gz )
+    for f in *setup*.exe; do
+        if [ -f "$f" ]; then
+            files+=( "$f" )
+        fi
+    done
+    sha256sum "${files[@]}"
+) > dist/SHA256SUMS.txt
 echo "Packaged archives and SHA-256 checksums:"
 cat dist/SHA256SUMS.txt

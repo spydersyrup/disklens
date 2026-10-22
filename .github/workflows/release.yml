@@ -20,20 +20,23 @@ jobs:
       - name: Install system dependencies & MinGW
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc make libx11-dev gcc-mingw-w64-x86-64
+          sudo apt-get install -y gcc make libx11-dev gcc-mingw-w64-x86-64 binutils-mingw-w64-x86-64
 
       - name: Install Rust toolchain with Windows target
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-pc-windows-gnu
 
-      - name: Package release archives
-        run: ./scripts/package_app.sh
+      - name: Package release archives & installer
+        run: |
+          ./scripts/build_installer.sh
+          ./scripts/package_app.sh
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             dist/*.tar.gz
+            dist/*setup*.exe
             dist/SHA256SUMS.txt
           generate_release_notes: true

@@ -65,6 +65,9 @@ make linux
 # Build Windows executable (dist/DiskSonar.exe)
 make windows
 
+# Build Windows setup installer via Inno Setup
+make installer
+
 # Build both platforms
 make all
 
@@ -74,6 +77,8 @@ make verify
 # Create release tarballs with checksums
 make package
 ```
+
+The Windows executable embeds high-resolution icons and version metadata directly into `dist/DiskSonar.exe`. An Inno Setup compiler script is provided in `Packaging/Windows/disksonar.iss` to build standalone setup installers (`DiskSonar-0.1.0-windows-x86_64-setup.exe`).
 
 ## Running
 
