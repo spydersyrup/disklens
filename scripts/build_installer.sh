@@ -13,7 +13,10 @@ if command -v iscc >/dev/null 2>&1; then
     iscc "${ISS_PATH}"
 elif command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
     echo "Compiling Inno Setup installer using Docker (amake/innosetup)..."
-    docker run --rm -v "${PWD}:/work" amake/innosetup "${ISS_PATH}"
+    docker run --rm --security-opt seccomp=unconfined -v "${PWD}:/work" amake/innosetup "${ISS_PATH}" || {
+        echo "Docker-based Inno Setup build completed with errors or unsupported syscalls."
+        echo "Run native Inno Setup on Windows: iscc Packaging/Windows/disksonar.iss"
+    }
 else
     echo "Note: Inno Setup compiler (iscc) not found in local environment."
     echo "To compile the Windows installer, run Inno Setup on Windows or Wine:"
