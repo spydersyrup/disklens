@@ -65,6 +65,24 @@ fn main() {
     println!("cargo:rustc-link-lib=static=disksonar_platform");
 
     if is_windows {
+        println!("cargo:rerun-if-changed=Packaging/Windows/disksonar.rc");
+        println!("cargo:rerun-if-changed=Packaging/Windows/disksonar.ico");
+        let rc_file = PathBuf::from("Packaging/Windows/disksonar.rc");
+        if rc_file.exists() {
+            let rc_obj = out_dir.join("disksonar_res.o");
+            let windres = "x86_64-w64-mingw32-windres";
+            let rc_status = Command::new(windres)
+                .args(["-i", "Packaging/Windows/disksonar.rc", "-O", "coff", "-o"])
+                .arg(&rc_obj)
+                .arg("-IPackaging/Windows")
+                .status();
+            if let Ok(st) = rc_status {
+                if st.success() {
+                    println!("cargo:rustc-link-arg={}", rc_obj.display());
+                }
+            }
+        }
+
         for lib in ["gdi32", "user32", "shell32", "ole32", "uuid", "comdlg32", "psapi", "advapi32"] {
             println!("cargo:rustc-link-lib=dylib={}", lib);
         }
