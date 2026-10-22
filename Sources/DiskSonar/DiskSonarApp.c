@@ -909,7 +909,7 @@ int main(int argc, char **argv) {
             print_cli_usage(argv[0]);
             return 0;
         } else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
-            printf("DiskSonar 1.0.0 (x86_64)\n");
+            printf("DiskSonar 0.1.0 (x86_64)\n");
             return 0;
         } else if (argv[i][0] != '-') {
             target_dir = argv[i];
