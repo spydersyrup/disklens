@@ -34,6 +34,13 @@ jobs:
           BIN=$(ls dist/disk* 2>/dev/null | head -n 1)
           "$BIN" --verify .
 
+      - name: Upload Linux binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: disksonar-linux-x86_64
+          path: dist/disksonar
+          if-no-files-found: error
+
   windows-cross-compile:
     name: Windows Cross-Compile
     runs-on: ubuntu-latest
@@ -61,6 +68,13 @@ jobs:
         run: |
           test -f dist/*.exe
           ls -lh dist/*.exe
+
+      - name: Upload Windows binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DiskSonar-windows-x86_64
+          path: dist/DiskSonar.exe
+          if-no-files-found: error
 
   hygiene:
     name: Code & Documentation Hygiene

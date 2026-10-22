@@ -1,6 +1,6 @@
 [package]
 name = "disksonar"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "Native disk storage analyzer with nine visualizations and safe Trash cleanup"
 

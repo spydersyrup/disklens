@@ -11,7 +11,7 @@ SRCS = \
 	Sources/DiskSonar/Scanning/DiskScanner.c \
 	Sources/DiskSonar/Views/Views.c
 
-.PHONY: all linux windows run app package icon installer verify clean
+.PHONY: all linux windows deb run app package icon installer verify clean
 
 all: linux windows
 
@@ -22,6 +22,9 @@ linux:
 windows:
 	@mkdir -p dist
 	./scripts/build_app.sh windows
+
+deb: linux
+	./scripts/package_app.sh
 
 icon:
 	./scripts/make_icon.sh

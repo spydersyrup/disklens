@@ -78,7 +78,7 @@ make verify
 make package
 ```
 
-The Windows executable embeds high-resolution icons and version metadata directly into `dist/DiskSonar.exe`. An Inno Setup compiler script is provided in `Packaging/Windows/disksonar.iss` to build standalone setup installers (`DiskSonar-0.1.0-windows-x86_64-setup.exe`), supporting all-users or per-user privilege modes, pre-install permission advisories, Windows Explorer context menu integration ('Scan with DiskSonar'), and command-line PATH registration.
+The Windows executable embeds high-resolution icons and version metadata directly into `dist/DiskSonar.exe`. An Inno Setup compiler script is provided in `Packaging/Windows/disksonar.iss` to build standalone setup installers (`DiskSonar-0.1.1-windows-x86_64-setup.exe`), supporting all-users or per-user privilege modes, pre-install permission advisories, Windows Explorer context menu integration ('Scan with DiskSonar'), and command-line PATH registration.
 
 ## Running
 
