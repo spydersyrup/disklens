@@ -24,6 +24,9 @@ if [ -f "dist/${APP_WIN_EXEC}" ]; then
     if [ -f "Packaging/Windows/disksonar.ico" ]; then
         cp -f "Packaging/Windows/disksonar.ico" "${WIN_STAGE}/disksonar.ico"
     fi
+    if [ -f "Packaging/Windows/preinstall_info.txt" ]; then
+        cp -f "Packaging/Windows/preinstall_info.txt" "${WIN_STAGE}/preinstall_info.txt"
+    fi
     cp -f "README.md" "${WIN_STAGE}/README.md"
     tar -czf "dist/${APP_NAME}-${VERSION}-windows-x86_64.tar.gz" -C dist "${APP_NAME}-${VERSION}-windows-x86_64"
 fi
