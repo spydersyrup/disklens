@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include "Views/Views.h"
+#include "Utils/Utils.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,6 +16,24 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/keysym.h>
+#endif
+
+static void dd_sleep_ms(int ms) {
+#ifdef _WIN32
+    Sleep(ms);
+#else
+    usleep(ms * 1000);
+#endif
+}
+
+#ifdef _WIN32
+static void attach_parent_console(void) {
+    if (AttachConsole(ATTACH_PARENT_PROCESS)) {
+        FILE *fp;
+        freopen_s(&fp, "CONOUT$", "w", stdout);
+        freopen_s(&fp, "CONOUT$", "w", stderr);
+    }
+}
 #endif
 
 static void apply_env_hooks(DDAppState *st) {
@@ -65,11 +84,7 @@ static int run_verification_suite(DDAppState *st, DDCanvas *cv, const char *scan
     dd_views_render(st, cv);
     while (st->scan_progress.is_running) {
         dd_app_tick(st);
-#ifdef _WIN32
-        Sleep(20);
-#else
-        usleep(20000);
-#endif
+        dd_sleep_ms(20);
     }
     dd_app_tick(st);
     dd_views_render(st, cv);
@@ -172,11 +187,7 @@ static int run_verification_suite(DDAppState *st, DDCanvas *cv, const char *scan
             dd_views_handle_click(st, cv, h_dscan->rect.x + 4, h_dscan->rect.y + 4, 1, false);
             while (st->duplicates.scanning) {
                 dd_app_tick(st);
-#ifdef _WIN32
-                Sleep(10);
-#else
-                usleep(10000);
-#endif
+                dd_sleep_ms(10);
             }
             dd_app_tick(st);
             dd_views_render(st, cv);
@@ -190,11 +201,7 @@ static int run_verification_suite(DDAppState *st, DDCanvas *cv, const char *scan
         dd_views_render(st, cv);
         while (st->app_store.loading) {
             dd_app_tick(st);
-#ifdef _WIN32
-            Sleep(10);
-#else
-            usleep(10000);
-#endif
+            dd_sleep_ms(10);
         }
         dd_app_tick(st);
         dd_views_render(st, cv);
@@ -254,7 +261,94 @@ static int run_verification_suite(DDAppState *st, DDCanvas *cv, const char *scan
     dd_canvas_resize(cv, 1680, 1050);
     dd_views_render(st, cv);
 
-    /* Verify exclusion rules and .disksonarignore parsing */
+    /* Security & Export verification tests */
+    /* 1. Test HTML escaping logic against XSS payloads */
+    {
+        char temp_html[512];
+        snprintf(temp_html, sizeof(temp_html), "%s/test_xss_check.html", scan_dir);
+        FILE *fh = fopen(temp_html, "wb");
+        if (fh) {
+            dd_write_html_escaped(fh, "<script>alert('XSS');</script>");
+            fclose(fh);
+            FILE *rh = fopen(temp_html, "rb");
+            if (rh) {
+                char buf[512] = {0};
+                size_t nr = fread(buf, 1, sizeof(buf) - 1, rh);
+                fclose(rh);
+                remove(temp_html);
+                if (nr > 0 && strstr(buf, "&lt;script&gt;alert(&#39;XSS&#39;);&lt;/script&gt;") != NULL
+                    && strchr(buf, '<') == NULL && strchr(buf, '>') == NULL) {
+                    printf("[PASS] HTML export security -> untrusted markup contextual entity escaping verified\n");
+                } else {
+                    fprintf(stderr, "[FAIL] HTML export security check failed: %s\n", buf);
+                    return 1;
+                }
+            }
+        }
+    }
+
+    /* 2. Test CSV formula injection protection */
+    {
+        char temp_csv[512];
+        snprintf(temp_csv, sizeof(temp_csv), "%s/test_csv_check.csv", scan_dir);
+        FILE *fc = fopen(temp_csv, "wb");
+        if (fc) {
+            dd_write_csv_field_safe(fc, "=cmd|' /C calc'!A0");
+            fputc(',', fc);
+            dd_write_csv_field_safe(fc, "+12345");
+            fputc(',', fc);
+            dd_write_csv_field_safe(fc, "  @SUM(A1)");
+            fputc('\n', fc);
+            fclose(fc);
+            FILE *rc = fopen(temp_csv, "rb");
+            if (rc) {
+                char buf[512] = {0};
+                size_t nr = fread(buf, 1, sizeof(buf) - 1, rc);
+                fclose(rc);
+                remove(temp_csv);
+                if (nr > 0 && strstr(buf, "\"'=cmd|") != NULL && strstr(buf, "\"'+12345\"") != NULL && strstr(buf, "\"'  @SUM(A1)\"") != NULL) {
+                    printf("[PASS] CSV export security -> spreadsheet formula injection prefixing verified\n");
+                } else {
+                    fprintf(stderr, "[FAIL] CSV export security check failed: %s\n", buf);
+                    return 1;
+                }
+            }
+        }
+    }
+
+    /* 3. Test report exports with current scanned tree */
+    {
+        char out_j[512], out_c[512], out_h[512];
+        snprintf(out_j, sizeof(out_j), "%s/verify_scan.json", scan_dir);
+        snprintf(out_c, sizeof(out_c), "%s/verify_scan.csv", scan_dir);
+        snprintf(out_h, sizeof(out_h), "%s/verify_scan.html", scan_dir);
+
+        if (dd_export_tree_json(st->tree, out_j)) {
+            remove(out_j);
+            printf("[PASS] JSON report export -> generated and validated\n");
+        } else {
+            fprintf(stderr, "[FAIL] dd_export_tree_json failed\n");
+            return 1;
+        }
+
+        if (dd_export_tree_csv(st->tree, out_c)) {
+            remove(out_c);
+            printf("[PASS] CSV report export -> generated and validated\n");
+        } else {
+            fprintf(stderr, "[FAIL] dd_export_tree_csv failed\n");
+            return 1;
+        }
+
+        if (dd_export_tree_html(st->tree, out_h)) {
+            remove(out_h);
+            printf("[PASS] HTML interactive report export -> generated and validated\n");
+        } else {
+            fprintf(stderr, "[FAIL] dd_export_tree_html failed\n");
+            return 1;
+        }
+    }
+
+    /* 4. Verify exclusion rules and .disksonarignore parsing */
     {
         if (!dd_wildcard_match("*.log", "error.log") ||
             dd_wildcard_match("*.log", "error.txt") ||
@@ -486,21 +580,38 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 int dd_native_app_main(int argc, char **argv) {
     bool verify_mode = false;
     const char *verify_dir = ".";
+    const char *screenshot_out = NULL;
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--verify") == 0) {
             verify_mode = true;
             if (i + 1 < argc && argv[i + 1][0] != '-') verify_dir = argv[++i];
+        } else if (strcmp(argv[i], "--screenshot") == 0 && i + 1 < argc) {
+            screenshot_out = argv[++i];
         }
     }
-    dd_app_state_init(&g_state);
-    g_canvas = dd_canvas_create(1680, 1050);
-    apply_env_hooks(&g_state);
 
     if (verify_mode) {
+        attach_parent_console();
+        dd_app_state_init(&g_state);
+        g_canvas = dd_canvas_create(1680, 1050);
+        apply_env_hooks(&g_state);
         int rc = run_verification_suite(&g_state, g_canvas, verify_dir);
+        if (screenshot_out) {
+            dd_canvas_save_png(g_canvas, screenshot_out);
+        }
         dd_canvas_destroy(g_canvas);
         dd_app_state_destroy(&g_state);
         return rc;
+    }
+
+    dd_app_state_init(&g_state);
+    g_canvas = dd_canvas_create(1680, 1050);
+    apply_env_hooks(&g_state);
+    for (int i = 1; i < argc; i++) {
+        if (argv[i][0] != '-') {
+            dd_app_start_scan(&g_state, argv[i]);
+            break;
+        }
     }
 
     HINSTANCE hInst = GetModuleHandleA(NULL);

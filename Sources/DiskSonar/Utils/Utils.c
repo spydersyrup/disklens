@@ -405,7 +405,9 @@ void dd_monitor_sample(DDSystemMonitor *mon) {
 
             unsigned long utime = 0, stime = 0;
             long rss_pages = 0;
+            if (rparen + 1 >= sbuf + nr || *(rparen + 1) != ' ') continue;
             char *rest = rparen + 2;
+            if (rest >= sbuf + nr) continue;
             int field = 3;
             char *saveptr = NULL;
             for (char *tok = strtok_r(rest, " ", &saveptr); tok; tok = strtok_r(NULL, " ", &saveptr), field++) {
@@ -543,8 +545,14 @@ const char *dd_get_clipboard_cache(void) {
 void dd_reveal_in_file_manager(const char *path) {
     if (!path || !*path) return;
 #ifdef _WIN32
-    char param[1024];
-    snprintf(param, sizeof(param), "/select,\"%s\"", path);
+    char clean_path[1024];
+    size_t c_idx = 0;
+    for (const char *p = path; *p && c_idx + 1 < sizeof(clean_path); p++) {
+        if (*p != '"') clean_path[c_idx++] = *p;
+    }
+    clean_path[c_idx] = '\0';
+    char param[1080];
+    snprintf(param, sizeof(param), "/select,\"%s\"", clean_path);
     ShellExecuteA(NULL, "open", "explorer.exe", param, NULL, SW_SHOWNORMAL);
 #else
     char dir[1024];
@@ -658,6 +666,49 @@ static void write_json_escaped(FILE *f, const char *s) {
     }
 }
 
+void dd_write_html_escaped(FILE *f, const char *s) {
+    if (!s) return;
+    for (const char *p = s; *p; p++) {
+        switch (*p) {
+            case '&':  fputs("&amp;", f); break;
+            case '<':  fputs("&lt;", f); break;
+            case '>':  fputs("&gt;", f); break;
+            case '"':  fputs("&quot;", f); break;
+            case '\'': fputs("&#39;", f); break;
+            default:
+                if ((unsigned char)*p >= 32 || *p == '\t' || *p == '\n' || *p == '\r') {
+                    fputc(*p, f);
+                } else {
+                    fprintf(f, "&#%u;", (unsigned int)(unsigned char)*p);
+                }
+                break;
+        }
+    }
+}
+
+void dd_write_csv_field_safe(FILE *f, const char *s) {
+    if (!s) {
+        fputs("\"\"", f);
+        return;
+    }
+    const char *p = s;
+    while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n') p++;
+    bool needs_prefix = (*p == '=' || *p == '+' || *p == '-' || *p == '@' || *p == '|' || *p == '\t');
+
+    fputc('"', f);
+    if (needs_prefix) {
+        fputc('\'', f);
+    }
+    for (const char *c = s; *c; c++) {
+        if (*c == '"') {
+            fputs("\"\"", f);
+        } else {
+            fputc(*c, f);
+        }
+    }
+    fputc('"', f);
+}
+
 bool dd_export_tree_json(const DDFileTree *tree, const char *out_path) {
     if (!tree || !out_path || !*out_path) return false;
     FILE *f = fopen(out_path, "w");
@@ -708,15 +759,12 @@ bool dd_export_tree_csv(const DDFileTree *tree, const char *out_path) {
     for (int32_t i = 0; i < tree->node_count; i++) {
         const DDFileNode *n = &tree->nodes[i];
         dd_node_build_path(tree, i, path_buf, sizeof(path_buf));
-        fprintf(f, "%d,%d,%d,%s,%lld,%lld,%.3f,\"",
+        fprintf(f, "%d,%d,%d,%s,%lld,%lld,%.3f,",
                 i, n->parent_idx, n->is_directory ? 1 : 0,
                 dd_category_name((DDFileCategory)n->category),
                 (long long)n->logical_size, (long long)n->size_on_disk, n->modified_stamp);
-        for (const char *p = path_buf; *p; p++) {
-            if (*p == '"') fputs("\"\"", f);
-            else fputc(*p, f);
-        }
-        fprintf(f, "\"\n");
+        dd_write_csv_field_safe(f, path_buf);
+        fprintf(f, "\n");
     }
     fclose(f);
     return true;
@@ -733,7 +781,9 @@ bool dd_export_tree_html(const DDFileTree *tree, const char *out_path) {
 
     fprintf(f, "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n");
     fprintf(f, "<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0\">\n");
-    fprintf(f, "<title>DiskSonar Report - %s</title>\n", tree->root_path);
+    fprintf(f, "<title>DiskSonar Report - ");
+    dd_write_html_escaped(f, tree->root_path);
+    fprintf(f, "</title>\n");
     fprintf(f, "<style>\n");
     fprintf(f, "* { box-sizing: border-box; margin: 0; padding: 0; }\n");
     fprintf(f, "body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #18181b; color: #f4f4f5; padding: 24px; line-height: 1.5; }\n");
@@ -741,18 +791,20 @@ bool dd_export_tree_html(const DDFileTree *tree, const char *out_path) {
     fprintf(f, "h1 { font-size: 24px; font-weight: 700; color: #fafafa; margin-bottom: 8px; }\n");
     fprintf(f, ".stats { display: flex; flex-wrap: wrap; gap: 16px; font-size: 14px; color: #a1a1aa; }\n");
     fprintf(f, ".stat-card { background: #27272a; padding: 12px 16px; border-radius: 8px; }\n");
-    fprintf(f, ".stat-val { font-size: 18px; font-weight: 600; color: #38bdf8; }\n");
+    fprintf(f, ".stat-val { font-size: 18px; font-weight: 600; color: #38bdf8; word-break: break-all; }\n");
     fprintf(f, ".cat-bar { display: flex; height: 16px; border-radius: 8px; overflow: hidden; margin: 20px 0; background: #3f3f46; }\n");
     fprintf(f, ".cat-seg { height: 100%%; }\n");
     fprintf(f, ".table-container { background: #27272a; border-radius: 8px; overflow: hidden; margin-top: 24px; }\n");
     fprintf(f, "table { width: 100%%; border-collapse: collapse; text-align: left; font-size: 13px; }\n");
     fprintf(f, "th { background: #3f3f46; padding: 10px 14px; font-weight: 600; color: #e4e4e7; }\n");
-    fprintf(f, "td { padding: 8px 14px; border-bottom: 1px solid #3f3f46; color: #d4d4d8; font-family: monospace; }\n");
+    fprintf(f, "td { padding: 8px 14px; border-bottom: 1px solid #3f3f46; color: #d4d4d8; font-family: monospace; word-break: break-all; }\n");
     fprintf(f, "tr:hover td { background: #323238; }\n");
     fprintf(f, "</style>\n</head>\n<body>\n");
     fprintf(f, "<div class=\"header\">\n<h1>DiskSonar Storage Audit</h1>\n");
     fprintf(f, "<div class=\"stats\">\n");
-    fprintf(f, "<div class=\"stat-card\"><div>Target</div><div class=\"stat-val\">%s</div></div>\n", tree->root_path);
+    fprintf(f, "<div class=\"stat-card\"><div>Target</div><div class=\"stat-val\">");
+    dd_write_html_escaped(f, tree->root_path);
+    fprintf(f, "</div></div>\n");
     fprintf(f, "<div class=\"stat-card\"><div>Logical Size</div><div class=\"stat-val\">%s</div></div>\n", total_buf);
     fprintf(f, "<div class=\"stat-card\"><div>Size on Disk</div><div class=\"stat-val\">%s</div></div>\n", disk_buf);
     fprintf(f, "<div class=\"stat-card\"><div>Items Scanned</div><div class=\"stat-val\">%d (%d folders)</div></div>\n", tree->node_count, tree->folder_count);
@@ -765,12 +817,14 @@ bool dd_export_tree_html(const DDFileTree *tree, const char *out_path) {
 
     fprintf(f, "<div class=\"cat-bar\">\n");
     int64_t total_sz = (tree->node_count > 0 ? tree->nodes[0].logical_size : 1);
+    if (total_sz <= 0) total_sz = 1;
     for (int c = 0; c < CAT_COUNT; c++) {
         int64_t sz = (tree->folder_count > 0) ? tree->folders[0].type_sizes[c] : 0;
         if (sz <= 0) continue;
         double pct = (double)sz / (double)total_sz * 100.0;
-        fprintf(f, "<div class=\"cat-seg\" style=\"width:%.2f%%;background:%s;\" title=\"%s: %.1f%%\"></div>\n",
-                pct, cat_colors[c], dd_category_name((DDFileCategory)c), pct);
+        fprintf(f, "<div class=\"cat-seg\" style=\"width:%.2f%%;background:%s;\" title=\"", pct, cat_colors[c]);
+        dd_write_html_escaped(f, dd_category_name((DDFileCategory)c));
+        fprintf(f, ": %.1f%%\"></div>\n", pct);
     }
     fprintf(f, "</div>\n");
 
@@ -786,7 +840,7 @@ bool dd_export_tree_html(const DDFileTree *tree, const char *out_path) {
         fprintf(f, "<tr><td>%s</td><td>%s</td><td>%s</td><td>",
                 n->is_directory ? "DIR" : "FILE",
                 dd_category_name((DDFileCategory)n->category), sbuf);
-        write_json_escaped(f, pbuf);
+        dd_write_html_escaped(f, pbuf);
         fprintf(f, "</td></tr>\n");
     }
     fprintf(f, "</tbody></table></div>\n");

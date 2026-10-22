@@ -18,6 +18,7 @@
 #include <io.h>
 #else
 #include <unistd.h>
+#include <fcntl.h>
 #include <dirent.h>
 #include <pthread.h>
 #include <signal.h>
@@ -126,11 +127,18 @@ uint32_t dd_tree_intern_string(DDFileTree *tree, const char *str, size_t len) {
 
 int32_t dd_tree_add_node(DDFileTree *tree, int32_t parent_idx, const char *name, size_t name_len, bool is_dir, DDFileCategory cat, bool inside_app) {
     if (tree->node_count >= tree->node_cap) {
-        int32_t new_cap = tree->node_cap * 2;
+        int32_t new_cap = tree->node_cap == 0 ? 512 : tree->node_cap * 2;
         DDFileNode *grown = (DDFileNode *)realloc(tree->nodes, (size_t)new_cap * sizeof(DDFileNode));
         if (!grown) return -1;
         tree->nodes = grown;
         tree->node_cap = new_cap;
+    }
+    if (is_dir && tree->folder_count >= tree->folder_cap) {
+        int32_t new_fcap = tree->folder_cap == 0 ? 128 : tree->folder_cap * 2;
+        DDFolderExtra *fgrown = (DDFolderExtra *)realloc(tree->folders, (size_t)new_fcap * sizeof(DDFolderExtra));
+        if (!fgrown) return -1;
+        tree->folders = fgrown;
+        tree->folder_cap = new_fcap;
     }
     int32_t idx = tree->node_count++;
     DDFileNode *n = &tree->nodes[idx];
@@ -141,13 +149,6 @@ int32_t dd_tree_add_node(DDFileTree *tree, int32_t parent_idx, const char *name,
     n->is_directory = is_dir ? 1 : 0;
     n->inside_app = inside_app ? 1 : 0;
     if (is_dir) {
-        if (tree->folder_count >= tree->folder_cap) {
-            int32_t new_fcap = tree->folder_cap * 2;
-            DDFolderExtra *fgrown = (DDFolderExtra *)realloc(tree->folders, (size_t)new_fcap * sizeof(DDFolderExtra));
-            if (!fgrown) return -1;
-            tree->folders = fgrown;
-            tree->folder_cap = new_fcap;
-        }
         int32_t fidx = tree->folder_count++;
         memset(&tree->folders[fidx], 0, sizeof(DDFolderExtra));
         n->folder_idx = fidx;
@@ -637,6 +638,48 @@ static bool is_subpath_of(const char *child, const char *parent) {
     return child[plen] == '\0' || child[plen] == '/' || child[plen] == '\\';
 }
 
+#ifndef _WIN32
+static void trash_percent_encode(const char *src, char *dst, size_t dst_cap) {
+    if (!src || !dst || dst_cap == 0) return;
+    size_t d = 0;
+    for (const unsigned char *s = (const unsigned char *)src; *s && d + 1 < dst_cap; s++) {
+        if ((*s >= 'a' && *s <= 'z') || (*s >= 'A' && *s <= 'Z') ||
+            (*s >= '0' && *s <= '9') || *s == '-' || *s == '_' || *s == '.' || *s == '/' || *s == '~') {
+            dst[d++] = (char)*s;
+        } else {
+            if (d + 4 >= dst_cap) break;
+            snprintf(dst + d, dst_cap - d, "%%%02X", *s);
+            d += 3;
+        }
+    }
+    dst[d] = '\0';
+}
+
+static void safe_cleanup_trash_dest(const char *dest_file, const char *trash_files_dir, const char *src_path) {
+    if (!dest_file || !*dest_file || !trash_files_dir || !*trash_files_dir) {
+        return;
+    }
+    if (src_path && strcmp(dest_file, src_path) == 0) {
+        return;
+    }
+    size_t tlen = strlen(trash_files_dir);
+    if (strncmp(dest_file, trash_files_dir, tlen) != 0 || (dest_file[tlen] != '/' && dest_file[tlen] != '\0')) {
+        return;
+    }
+    struct stat dst_st;
+    if (lstat(dest_file, &dst_st) != 0) {
+        return;
+    }
+    if (S_ISLNK(dst_st.st_mode)) {
+        unlink(dest_file);
+    } else if (S_ISDIR(dst_st.st_mode)) {
+        dd_exec_sync("rm", "-rf", dest_file, NULL);
+    } else {
+        unlink(dest_file);
+    }
+}
+#endif
+
 static bool move_single_to_trash(const char *path) {
 #ifdef _WIN32
     DWORD attr = GetFileAttributesA(path);
@@ -664,6 +707,9 @@ static bool move_single_to_trash(const char *path) {
 
     char dest_file[640], dest_info[640];
     int attempt = 0;
+    int info_fd = -1;
+
+    /* Find an unused slot atomically by creating the .trashinfo file with O_CREAT | O_EXCL */
     while (attempt < 1000) {
         if (attempt == 0) {
             snprintf(dest_file, sizeof(dest_file), "%s/%s", files_dir, base);
@@ -672,33 +718,107 @@ static bool move_single_to_trash(const char *path) {
             snprintf(dest_file, sizeof(dest_file), "%s/%s.%d", files_dir, base, attempt);
             snprintf(dest_info, sizeof(dest_info), "%s/%s.%d.trashinfo", info_dir, base, attempt);
         }
+
+        /* Check destination file does not exist before attempting info reservation */
         struct stat dst;
-        if (lstat(dest_file, &dst) != 0 && lstat(dest_info, &dst) != 0) break;
-        attempt++;
+        if (lstat(dest_file, &dst) == 0) {
+            attempt++;
+            continue;
+        }
+
+        info_fd = open(dest_info, O_WRONLY | O_CREAT | O_EXCL, 0600);
+        if (info_fd >= 0) {
+            break;
+        }
+        if (errno == EEXIST) {
+            attempt++;
+            continue;
+        }
+        /* Unrecoverable directory or permission failure */
+        return false;
     }
 
-    bool moved = (rename(path, dest_file) == 0);
+    if (info_fd < 0) {
+        /* Exhausted retries without overwrite - preserve original file safely */
+        return false;
+    }
+
+    /* Write compliant FreeDesktop Trash Info metadata */
+    time_t now = time(NULL);
+    struct tm tmv;
+    localtime_r(&now, &tmv);
+    char tstr[64];
+    strftime(tstr, sizeof(tstr), "%Y-%m-%dT%H:%M:%S", &tmv);
+
+    char enc_path[1024];
+    trash_percent_encode(path, enc_path, sizeof(enc_path));
+
+    char info_buf[1536];
+    int info_len = snprintf(info_buf, sizeof(info_buf), "[Trash Info]\nPath=%s\nDeletionDate=%s\n", enc_path, tstr);
+    if (info_len <= 0 || write(info_fd, info_buf, (size_t)info_len) != (ssize_t)info_len) {
+        close(info_fd);
+        unlink(dest_info);
+        return false;
+    }
+    close(info_fd);
+
+    /* Atomic move without replace where supported */
+    bool moved = false;
+#if defined(__linux__) && defined(SYS_renameat2) && defined(RENAME_NOREPLACE)
+    if (syscall(SYS_renameat2, AT_FDCWD, path, AT_FDCWD, dest_file, RENAME_NOREPLACE) == 0) {
+        moved = true;
+    }
+#endif
+    if (!moved) {
+        struct stat check_dst;
+        if (lstat(dest_file, &check_dst) != 0) {
+            if (rename(path, dest_file) == 0) {
+                moved = true;
+            }
+        }
+    }
+
     if (!moved) {
         int ren_err = errno;
-        if (ren_err == EACCES || ren_err == EPERM || ren_err == EROFS) {
-            return false;
-        }
         if (ren_err == EXDEV) {
-            moved = dd_exec_sync("mv", "-f", path, dest_file);
+            /* Cross-filesystem move: attempt native gio trash first */
+            if (dd_exec_sync("gio", "trash", path, NULL)) {
+                unlink(dest_info);
+                return true;
+            }
+            /* Safe copy without overwrite fallback */
+            if (dd_exec_sync("cp", "-an", path, dest_file)) {
+                struct stat verify_dst;
+                if (lstat(dest_file, &verify_dst) == 0) {
+                    if (S_ISDIR(st.st_mode)) {
+                        dd_exec_sync("rm", "-rf", path, NULL);
+                    } else {
+                        unlink(path);
+                    }
+                    /* Verify source was removed */
+                    struct stat check_src;
+                    if (lstat(path, &check_src) != 0) {
+                        moved = true;
+                    } else {
+                        /* Source could not be removed; revert destination to prevent duplication */
+                        safe_cleanup_trash_dest(dest_file, files_dir, path);
+                    }
+                } else {
+                    safe_cleanup_trash_dest(dest_file, files_dir, path);
+                }
+            } else {
+                /* Copy failed mid-way; cleanly remove partial destination */
+                safe_cleanup_trash_dest(dest_file, files_dir, path);
+            }
         }
-    }
-    if (moved) {
-        time_t now = time(NULL);
-        struct tm tmv;
-        localtime_r(&now, &tmv);
-        char tstr[64], info_buf[1024];
-        strftime(tstr, sizeof(tstr), "%Y-%m-%dT%H:%M:%S", &tmv);
-        snprintf(info_buf, sizeof(info_buf), "[Trash Info]\nPath=%s\nDeletionDate=%s\n", path, tstr);
-        dd_write_file_atomic(dest_info, info_buf);
-        return true;
     }
 
-    return dd_exec_sync("gio", "trash", path, NULL);
+    if (!moved) {
+        /* Clean up reservation on failure, preserving original file completely */
+        unlink(dest_info);
+        return false;
+    }
+    return true;
 #endif
 }
 
@@ -708,7 +828,13 @@ void dd_trash_move_paths(char paths[][512], int count, DDTrashResult *out_res) {
 
     qsort(paths, (size_t)count, 512, cmp_path_len);
 
-    char trashed[2048][512];
+    /* Heap allocate rather than 1 MiB fixed stack array to prevent stack overflows */
+    typedef char PathEntry[512];
+    PathEntry *trashed = (PathEntry *)calloc(2048, sizeof(PathEntry));
+    if (!trashed) {
+        out_res->failed_count = count;
+        return;
+    }
     int trashed_n = 0;
 
     for (int i = 0; i < count; i++) {
@@ -735,6 +861,7 @@ void dd_trash_move_paths(char paths[][512], int count, DDTrashResult *out_res) {
             out_res->failed_count++;
         }
     }
+    free(trashed);
 }
 
 static void mark_subtree_deleted(DDFileTree *tree, int32_t idx) {
@@ -913,6 +1040,19 @@ static int cmp_dup_group(const void *a, const void *b) {
 void dd_duplicates_cancel(DDDuplicateStore *store) {
     if (!store) return;
     store->cancel_requested = 1;
+#ifdef _WIN32
+    if (store->thread_handle) {
+        WaitForSingleObject((HANDLE)store->thread_handle, INFINITE);
+        CloseHandle((HANDLE)store->thread_handle);
+        store->thread_handle = NULL;
+    }
+#else
+    if (store->has_thread) {
+        pthread_join((pthread_t)store->thread_handle, NULL);
+        store->has_thread = false;
+        store->thread_handle = NULL;
+    }
+#endif
     while (store->scanning) {
 #ifdef _WIN32
         Sleep(5);
@@ -1153,12 +1293,17 @@ void dd_duplicates_start(const DDFileTree *tree, int32_t folder_idx, DDDuplicate
 
 #ifdef _WIN32
     uintptr_t h = _beginthreadex(NULL, 0, dup_scan_thread, store, 0, NULL);
-    if (h) CloseHandle((HANDLE)h);
-    else run_duplicates_worker(store);
+    if (h) {
+        store->thread_handle = (void *)h;
+        store->has_thread = true;
+    } else {
+        run_duplicates_worker(store);
+    }
 #else
     pthread_t th;
     if (pthread_create(&th, NULL, dup_scan_thread, store) == 0) {
-        pthread_detach(th);
+        store->thread_handle = (void *)th;
+        store->has_thread = true;
     } else {
         run_duplicates_worker(store);
     }
@@ -1457,8 +1602,15 @@ void dd_apps_load(DDAppStore *store) {
             size_t lc_len = strlen(le->compact_lower);
             if (lc_len < 3) continue;
             bool match = false;
-            if (kn_len >= 3 && (strcmp(le->compact_lower, key_name) == 0 || (kn_len >= 5 && strstr(le->compact_lower, key_name) != NULL))) match = true;
-            if (!match && ki_len >= 4 && (strcmp(le->compact_lower, key_id) == 0 || strstr(le->compact_lower, key_id) != NULL)) match = true;
+            if (kn_len >= 3 && strcmp(le->compact_lower, key_name) == 0) match = true;
+            if (!match && ki_len >= 4 && strcmp(le->compact_lower, key_id) == 0) match = true;
+            if (!match && kn_len >= 4) {
+                size_t lc = strlen(le->compact_lower);
+                if (lc > kn_len && strncmp(le->compact_lower, key_name, kn_len) == 0) {
+                    char next = le->compact_lower[kn_len];
+                    if (next == '-' || next == '_' || next == '.') match = true;
+                }
+            }
             if (match) {
                 if (!le->size_computed) {
                     le->cached_size = dd_scanner_allocated_size(le->full_path);
@@ -1495,13 +1647,13 @@ static unsigned __stdcall apps_worker_thread_fn(void *arg) {
     if (tmp && !store->cancel_requested) {
         dd_apps_load(tmp);
         if (!store->cancel_requested) {
-            memcpy(store->apps, tmp->apps, sizeof(store->apps));
-            store->count = tmp->count;
-            store->grand_total = tmp->grand_total;
+            store->pending_result = tmp;
+            store->loaded = 1;
+            store->loading = 0;
+            return 0;
         }
     }
     free(tmp);
-    store->loaded = 1;
     store->loading = 0;
     return 0;
 }
@@ -1512,13 +1664,13 @@ static void *apps_worker_thread_fn(void *arg) {
     if (tmp && !store->cancel_requested) {
         dd_apps_load(tmp);
         if (!store->cancel_requested) {
-            memcpy(store->apps, tmp->apps, sizeof(store->apps));
-            store->count = tmp->count;
-            store->grand_total = tmp->grand_total;
+            store->pending_result = tmp;
+            store->loaded = 1;
+            store->loading = 0;
+            return NULL;
         }
     }
     free(tmp);
-    store->loaded = 1;
     store->loading = 0;
     return NULL;
 }
@@ -1527,12 +1679,29 @@ static void *apps_worker_thread_fn(void *arg) {
 void dd_apps_cancel(DDAppStore *store) {
     if (!store) return;
     store->cancel_requested = 1;
+#ifdef _WIN32
+    if (store->thread_handle) {
+        WaitForSingleObject((HANDLE)store->thread_handle, INFINITE);
+        CloseHandle((HANDLE)store->thread_handle);
+        store->thread_handle = NULL;
+    }
+#else
+    if (store->has_thread) {
+        pthread_join((pthread_t)store->thread_handle, NULL);
+        store->has_thread = false;
+        store->thread_handle = NULL;
+    }
+#endif
     while (store->loading) {
 #ifdef _WIN32
         Sleep(5);
 #else
         usleep(5000);
 #endif
+    }
+    if (store->pending_result) {
+        free(store->pending_result);
+        store->pending_result = NULL;
     }
     store->cancel_requested = 0;
 }
@@ -1543,12 +1712,17 @@ void dd_apps_start_load(DDAppStore *store) {
     store->loading = 1;
 #ifdef _WIN32
     HANDLE h = (HANDLE)_beginthreadex(NULL, 0, apps_worker_thread_fn, store, 0, NULL);
-    if (h) CloseHandle(h);
-    else dd_apps_load(store);
+    if (h) {
+        store->thread_handle = (void *)h;
+        store->has_thread = true;
+    } else {
+        dd_apps_load(store);
+    }
 #else
     pthread_t th;
     if (pthread_create(&th, NULL, apps_worker_thread_fn, store) == 0) {
-        pthread_detach(th);
+        store->thread_handle = (void *)th;
+        store->has_thread = true;
     } else {
         dd_apps_load(store);
     }
@@ -1623,7 +1797,7 @@ static void save_snapshots_index(const DDSnapshotStore *store) {
     char dir[512], idx_path[600];
     get_snapshots_dir(dir, sizeof(dir));
     snprintf(idx_path, sizeof(idx_path), "%s/index.json", dir);
-    size_t cap = 16384;
+    size_t cap = 4096 + (size_t)store->count * 1024;
     char *buf = (char *)malloc(cap);
     if (!buf) return;
     size_t pos = (size_t)snprintf(buf, cap, "[\n");
@@ -1731,6 +1905,9 @@ bool dd_snapshots_take(DDSnapshotStore *store, const DDFileTree *tree) {
         }
         store->count++;
     } else {
+        char old_fpath[600];
+        snprintf(old_fpath, sizeof(old_fpath), "%s/%s.json", dir, store->summaries[127].id);
+        remove(old_fpath);
         for (int i = 127; i > 0; i--) {
             store->summaries[i] = store->summaries[i - 1];
         }

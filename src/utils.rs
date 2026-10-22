@@ -341,9 +341,13 @@ pub fn resolve_data_dir(subdir: &str) -> PathBuf {
     #[cfg(windows)]
     {
         if let Ok(appdata) = env::var("APPDATA") {
-            let dir = PathBuf::from(appdata).join("DiskSonar").join(subdir);
+            let dir = PathBuf::from(&appdata).join("DiskSonar").join(subdir);
             if fs::create_dir_all(&dir).is_ok() {
                 return dir;
+            }
+            let legacy = PathBuf::from(&appdata).join("DiskLens").join(subdir);
+            if fs::create_dir_all(&legacy).is_ok() {
+                return legacy;
             }
         }
     }
@@ -353,7 +357,12 @@ pub fn resolve_data_dir(subdir: &str) -> PathBuf {
             let base = if subdir == "Trash/files" || subdir == "Trash/info" {
                 PathBuf::from(home).join(".local/share").join(subdir)
             } else {
-                PathBuf::from(home).join(".local/share/DiskSonar").join(subdir)
+                let sonar = PathBuf::from(&home).join(".local/share/DiskSonar").join(subdir);
+                if fs::create_dir_all(&sonar).is_ok() {
+                    sonar
+                } else {
+                    PathBuf::from(&home).join(".local/share/DiskLens").join(subdir)
+                }
             };
             if fs::create_dir_all(&base).is_ok() {
                 return base;
@@ -366,7 +375,8 @@ pub fn resolve_data_dir(subdir: &str) -> PathBuf {
 }
 
 pub fn write_file_atomic(path: &Path, content: &[u8]) -> bool {
-    let tmp_path = path.with_extension("tmp");
+    let fname = path.file_name().unwrap_or_default().to_string_lossy();
+    let tmp_path = path.with_file_name(format!(".{}.{}.tmp", fname, std::process::id()));
     let ok = (|| -> std::io::Result<()> {
         let mut f = File::create(&tmp_path)?;
         f.write_all(content)?;

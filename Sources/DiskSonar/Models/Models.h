@@ -190,6 +190,8 @@ typedef struct {
     uint32_t tree_generation;
     const DDFileTree *active_tree;
     int32_t root_folder_idx;
+    void *thread_handle;
+    bool has_thread;
 } DDDuplicateStore;
 
 void dd_duplicates_scan(const DDFileTree *tree, DDDuplicateStore *store);
@@ -225,6 +227,9 @@ typedef struct {
     volatile int loaded;
     volatile int loading;
     volatile int cancel_requested;
+    void *thread_handle;
+    bool has_thread;
+    void *pending_result;
 } DDAppStore;
 
 void dd_apps_load(DDAppStore *store);
