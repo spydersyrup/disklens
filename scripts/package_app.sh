@@ -2,7 +2,7 @@
 set -euo pipefail
 
 source Packaging/AppConfig.env
-./scripts/build_app.sh
+./scripts/build_app.sh all
 
 LINUX_STAGE="dist/${APP_NAME}-${VERSION}-linux-x86_64"
 WIN_STAGE="dist/${APP_NAME}-${VERSION}-windows-x86_64"
