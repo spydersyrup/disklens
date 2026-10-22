@@ -1,5 +1,5 @@
 ======================================================================
-  DiskSonar 0.1.0 - Native Disk Storage Analyzer
+  DiskSonar 0.1.1 - Native Disk Storage Analyzer
 ======================================================================
 
 Welcome to DiskSonar Setup.

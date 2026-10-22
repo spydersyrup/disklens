@@ -3,7 +3,7 @@
 ; Explorer integration, PATH configuration, and detailed setup wizard pages.
 
 #define MyAppName "DiskSonar"
-#define MyAppVersion "0.1.0"
+#define MyAppVersion "0.1.1"
 #define MyAppPublisher "spydersyrup"
 #define MyAppURL "https://github.com/spydersyrup/disksonar"
 #define MyAppExeName "DiskSonar.exe"
@@ -43,11 +43,11 @@ DisableDirPage=no
 DisableProgramGroupPage=no
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog commandline
-VersionInfoVersion=0.1.0.0
+VersionInfoVersion=0.1.1.0
 VersionInfoCompany={#MyAppPublisher}
 VersionInfoDescription={#MyAppDescription}
 VersionInfoProductName={#MyAppName}
-VersionInfoProductVersion=0.1.0.0
+VersionInfoProductVersion=0.1.1.0
 VersionInfoCopyright=Copyright (C) 2026 {#MyAppPublisher}
 ChangesEnvironment=yes
 ChangesAssociations=yes
