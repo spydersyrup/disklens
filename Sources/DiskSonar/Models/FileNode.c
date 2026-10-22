@@ -84,26 +84,51 @@ static unsigned __stdcall free_tree_thread(void *arg) {
     dd_tree_free((DDFileTree *)arg);
     return 0;
 }
+static HANDLE g_async_free_handle = NULL;
+static CRITICAL_SECTION g_async_free_cs;
+static bool g_async_free_cs_inited = false;
 #else
 static void *free_tree_thread(void *arg) {
     dd_tree_free((DDFileTree *)arg);
     return NULL;
 }
+static pthread_t g_async_free_thread = 0;
+static bool g_async_free_active = false;
+static pthread_mutex_t g_async_free_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
 void dd_tree_free_async(DDFileTree *tree) {
     if (!tree) return;
 #ifdef _WIN32
+    if (!g_async_free_cs_inited) {
+        InitializeCriticalSection(&g_async_free_cs);
+        g_async_free_cs_inited = true;
+    }
+    EnterCriticalSection(&g_async_free_cs);
+    if (g_async_free_handle) {
+        WaitForSingleObject(g_async_free_handle, INFINITE);
+        CloseHandle(g_async_free_handle);
+        g_async_free_handle = NULL;
+    }
     uintptr_t h = _beginthreadex(NULL, 0, free_tree_thread, tree, 0, NULL);
-    if (h) CloseHandle((HANDLE)h);
-    else dd_tree_free(tree);
-#else
-    pthread_t th;
-    if (pthread_create(&th, NULL, free_tree_thread, tree) == 0) {
-        pthread_detach(th);
+    if (h) {
+        g_async_free_handle = (HANDLE)h;
     } else {
         dd_tree_free(tree);
     }
+    LeaveCriticalSection(&g_async_free_cs);
+#else
+    pthread_mutex_lock(&g_async_free_mutex);
+    if (g_async_free_active) {
+        pthread_join(g_async_free_thread, NULL);
+        g_async_free_active = false;
+    }
+    if (pthread_create(&g_async_free_thread, NULL, free_tree_thread, tree) == 0) {
+        g_async_free_active = true;
+    } else {
+        dd_tree_free(tree);
+    }
+    pthread_mutex_unlock(&g_async_free_mutex);
 #endif
 }
 
@@ -222,10 +247,23 @@ void dd_node_build_path(const DDFileTree *tree, int32_t node_idx, char *buf, siz
         snprintf(buf, cap, "%s", tree->root_path);
         return;
     }
-    int32_t chain[128];
+    int32_t local_chain[512];
+    int32_t *chain = local_chain;
+    int chain_cap = 512;
     int depth = 0;
     int32_t cur = node_idx;
-    while (cur > 0 && depth < 128) {
+    while (cur > 0) {
+        if (depth >= chain_cap) {
+            int new_cap = chain_cap * 2;
+            int32_t *grown = (chain == local_chain) ? (int32_t *)malloc((size_t)new_cap * sizeof(int32_t))
+                                                    : (int32_t *)realloc(chain, (size_t)new_cap * sizeof(int32_t));
+            if (!grown) break;
+            if (chain == local_chain) {
+                memcpy(grown, local_chain, (size_t)depth * sizeof(int32_t));
+            }
+            chain = grown;
+            chain_cap = new_cap;
+        }
         chain[depth++] = cur;
         cur = tree->nodes[cur].parent_idx;
     }
@@ -241,6 +279,9 @@ void dd_node_build_path(const DDFileTree *tree, int32_t node_idx, char *buf, siz
     for (int i = depth - 1; i >= 0 && pos + 2 < cap; i--) {
         const char *nm = dd_node_name(tree, chain[i]);
         pos += (size_t)snprintf(buf + pos, cap - pos, "%c%s", sep, nm);
+    }
+    if (chain != local_chain) {
+        free(chain);
     }
 }
 

@@ -8,7 +8,7 @@
 typedef struct {
     int64_t files_scanned;
     int64_t bytes_scanned;
-    char current_path[512];
+    char current_path[1024];
     bool is_running;
     bool is_finished;
     bool was_cancelled;

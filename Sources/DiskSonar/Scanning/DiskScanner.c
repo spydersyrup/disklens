@@ -21,8 +21,51 @@ typedef struct {
     int32_t folder_node_idx;
     int depth;
     bool inside_app;
-    char path[512];
+    char path[4096];
 } ScanJob;
+
+typedef struct {
+    char **patterns;
+    int count;
+    int cap;
+} DDRuleList;
+
+static void dd_rule_list_init(DDRuleList *rl) {
+    if (!rl) return;
+    rl->patterns = NULL;
+    rl->count = 0;
+    rl->cap = 0;
+}
+
+static void dd_rule_list_clear(DDRuleList *rl) {
+    if (!rl) return;
+    for (int i = 0; i < rl->count; i++) {
+        free(rl->patterns[i]);
+    }
+    free(rl->patterns);
+    rl->patterns = NULL;
+    rl->count = 0;
+    rl->cap = 0;
+}
+
+static void dd_rule_list_add(DDRuleList *rl, const char *pattern) {
+    if (!rl || !pattern || !*pattern) return;
+    for (int i = 0; i < rl->count; i++) {
+        if (strcmp(rl->patterns[i], pattern) == 0) return;
+    }
+    if (rl->count >= rl->cap) {
+        int new_cap = (rl->cap == 0) ? 32 : rl->cap * 2;
+        char **grown = (char **)realloc(rl->patterns, (size_t)new_cap * sizeof(char *));
+        if (!grown) return;
+        rl->patterns = grown;
+        rl->cap = new_cap;
+    }
+    size_t len = strlen(pattern);
+    char *copy = (char *)malloc(len + 1);
+    if (!copy) return;
+    memcpy(copy, pattern, len + 1);
+    rl->patterns[rl->count++] = copy;
+}
 
 struct DDDiskScanner {
 #ifdef _WIN32
@@ -46,11 +89,9 @@ struct DDDiskScanner {
     DDScanProgress progress;
     DDFileTree *building_tree;
     DDFileTree *finished_tree;
-    char target_root[512];
+    char target_root[4096];
 
-#define DD_MAX_EXCLUDES 64
-    char exclude_patterns[DD_MAX_EXCLUDES][128];
-    int exclude_count;
+    DDRuleList global_excludes;
 };
 
 static void lock_scanner(DDDiskScanner *s) {
@@ -136,7 +177,7 @@ bool dd_wildcard_match(const char *pat, const char *str) {
 
 static bool dd_pattern_matches_entry(const char *raw_pattern, const char *name, bool is_dir) {
     if (!raw_pattern || !name || !*raw_pattern || !*name) return false;
-    char pat[128];
+    char pat[512];
     size_t len = 0;
     while (raw_pattern[len] && len < sizeof(pat) - 1) {
         pat[len] = raw_pattern[len];
@@ -156,29 +197,31 @@ static bool dd_pattern_matches_entry(const char *raw_pattern, const char *name, 
 
 bool dd_scanner_is_excluded(DDDiskScanner *s, const char *name, bool is_dir) {
     if (!s || !name || !*name) return false;
-    for (int i = 0; i < s->exclude_count; i++) {
-        if (dd_pattern_matches_entry(s->exclude_patterns[i], name, is_dir)) return true;
+    for (int i = 0; i < s->global_excludes.count; i++) {
+        if (dd_pattern_matches_entry(s->global_excludes.patterns[i], name, is_dir)) return true;
     }
     return false;
 }
 
-static bool dd_scanner_is_name_excluded(DDDiskScanner *s, char local_rules[][128], int local_rule_count, const char *name, bool is_dir) {
+static bool dd_scanner_is_name_excluded(DDDiskScanner *s, const DDRuleList *local_rules, const char *name, bool is_dir) {
     if (dd_scanner_is_excluded(s, name, is_dir)) return true;
-    for (int i = 0; i < local_rule_count; i++) {
-        if (dd_pattern_matches_entry(local_rules[i], name, is_dir)) return true;
+    if (local_rules) {
+        for (int i = 0; i < local_rules->count; i++) {
+            if (dd_pattern_matches_entry(local_rules->patterns[i], name, is_dir)) return true;
+        }
     }
     return false;
 }
 
-static void load_ignore_file(const char *dir_path, char out_rules[][128], int *out_count, int max_rules) {
-    if (!dir_path || !out_rules || !out_count) return;
+static void load_ignore_file(const char *dir_path, DDRuleList *out_rules) {
+    if (!dir_path || !out_rules) return;
     static const char * const ignore_filenames[] = {
         ".disksonarignore",
         ".disklensignore",
         ".diskdudeignore",
         NULL
     };
-    char file_path[600];
+    char file_path[4120];
     for (int f = 0; ignore_filenames[f]; f++) {
         size_t dlen = strlen(dir_path);
         if (dlen > 0 && (dir_path[dlen - 1] == '/' || dir_path[dlen - 1] == '\\')) {
@@ -188,7 +231,7 @@ static void load_ignore_file(const char *dir_path, char out_rules[][128], int *o
         }
         FILE *fp = fopen(file_path, "r");
         if (fp) {
-            char line[256];
+            char line[512];
             while (fgets(line, sizeof(line), fp)) {
                 char *p = line;
                 while (*p == ' ' || *p == '\t') p++;
@@ -197,9 +240,7 @@ static void load_ignore_file(const char *dir_path, char out_rules[][128], int *o
                     p[--llen] = '\0';
                 }
                 if (llen == 0 || *p == '#') continue;
-                if (*out_count < max_rules) {
-                    snprintf(out_rules[(*out_count)++], 128, "%s", p);
-                }
+                dd_rule_list_add(out_rules, p);
             }
             fclose(fp);
             break;
@@ -218,21 +259,12 @@ void dd_scanner_add_exclude(DDDiskScanner *s, const char *pattern) {
         while (*end && *end != ',') end++;
         size_t len = (size_t)(end - p);
         while (len > 0 && (p[len - 1] == ' ' || p[len - 1] == '\t')) len--;
-        if (len > 0 && s->exclude_count < DD_MAX_EXCLUDES) {
-            char buf[128];
+        if (len > 0) {
+            char buf[512];
             if (len >= sizeof(buf)) len = sizeof(buf) - 1;
             memcpy(buf, p, len);
             buf[len] = '\0';
-            bool dup = false;
-            for (int i = 0; i < s->exclude_count; i++) {
-                if (strcmp(s->exclude_patterns[i], buf) == 0) {
-                    dup = true;
-                    break;
-                }
-            }
-            if (!dup) {
-                snprintf(s->exclude_patterns[s->exclude_count++], 128, "%s", buf);
-            }
+            dd_rule_list_add(&s->global_excludes, buf);
         }
         p = end;
     }
@@ -242,7 +274,7 @@ void dd_scanner_add_exclude(DDDiskScanner *s, const char *pattern) {
 void dd_scanner_clear_excludes(DDDiskScanner *s) {
     if (!s) return;
     lock_scanner(s);
-    s->exclude_count = 0;
+    dd_rule_list_clear(&s->global_excludes);
     unlock_scanner(s);
 }
 
@@ -253,7 +285,7 @@ static bool is_app_dir_name(const char *name, size_t len) {
 }
 
 static void push_job_locked(DDDiskScanner *s, int32_t folder_node_idx, int depth, bool inside_app, const char *path) {
-    if (depth > 120) return;
+    if (depth > 500) return;
     if (s->job_count >= s->job_cap) {
         int new_cap = s->job_cap == 0 ? 512 : s->job_cap * 2;
         ScanJob *grown = (ScanJob *)realloc(s->job_stack, (size_t)new_cap * sizeof(ScanJob));
@@ -288,12 +320,12 @@ static void process_directory_job(DDDiskScanner *s, const ScanJob *job) {
     int64_t local_files = 0;
     int64_t local_bytes = 0;
 
-    char local_rules[32][128];
-    int local_rule_count = 0;
-    load_ignore_file(job->path, local_rules, &local_rule_count, 32);
+    DDRuleList local_rules;
+    dd_rule_list_init(&local_rules);
+    load_ignore_file(job->path, &local_rules);
 
 #ifdef _WIN32
-    char pattern[540];
+    char pattern[4120];
     size_t plen = strlen(job->path);
     if (plen > 0 && (job->path[plen - 1] == '\\' || job->path[plen - 1] == '/')) {
         snprintf(pattern, sizeof(pattern), "%s*", job->path);
@@ -312,7 +344,7 @@ static void process_directory_job(DDDiskScanner *s, const ScanJob *job) {
             if (name[0] == '.' && (name[1] == '\0' || (name[1] == '.' && name[2] == '\0'))) continue;
             if (fd.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) continue;
             bool is_dir = (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
-            if (dd_scanner_is_name_excluded(s, local_rules, local_rule_count, name, is_dir)) continue;
+            if (dd_scanner_is_name_excluded(s, &local_rules, name, is_dir)) continue;
 
             if (count >= cap) {
                 cap *= 2;
@@ -365,7 +397,7 @@ static void process_directory_job(DDDiskScanner *s, const ScanJob *job) {
             bool is_dir = S_ISDIR(st.st_mode);
             bool is_reg = S_ISREG(st.st_mode);
             if (!is_dir && !is_reg) continue;
-            if (dd_scanner_is_name_excluded(s, local_rules, local_rule_count, name, is_dir)) continue;
+            if (dd_scanner_is_name_excluded(s, &local_rules, name, is_dir)) continue;
 
             if (count >= cap) {
                 cap *= 2;
@@ -401,6 +433,7 @@ static void process_directory_job(DDDiskScanner *s, const ScanJob *job) {
 
     if (s->cancel_flag) {
         free(entries);
+        dd_rule_list_clear(&local_rules);
         return;
     }
 
@@ -409,7 +442,7 @@ static void process_directory_job(DDDiskScanner *s, const ScanJob *job) {
     if (denied) {
         tree->denied_count++;
         if (tree->denied_sample_count < 8) {
-            snprintf(tree->denied_samples[tree->denied_sample_count++], 512, "%s", job->path);
+            snprintf(tree->denied_samples[tree->denied_sample_count++], sizeof(tree->denied_samples[0]), "%s", job->path);
         }
     }
     s->progress.files_scanned += local_files;
@@ -428,7 +461,7 @@ static void process_directory_job(DDDiskScanner *s, const ScanJob *job) {
         dd_folder_add_child(tree, job->folder_node_idx, cidx);
 
         if (e->is_dir) {
-            char child_path[512];
+            char child_path[4096];
             size_t jlen = strlen(job->path);
 #ifdef _WIN32
             const char sep = '\\';
@@ -449,6 +482,7 @@ static void process_directory_job(DDDiskScanner *s, const ScanJob *job) {
     unlock_scanner(s);
 
     free(entries);
+    dd_rule_list_clear(&local_rules);
 }
 
 #ifdef _WIN32
@@ -651,6 +685,7 @@ void dd_scanner_destroy(DDDiskScanner *s) {
     if (s->building_tree) dd_tree_free(s->building_tree);
     if (s->finished_tree) dd_tree_free(s->finished_tree);
     free(s->job_stack);
+    dd_rule_list_clear(&s->global_excludes);
 #ifdef _WIN32
     DeleteCriticalSection(&s->lock);
 #else
@@ -678,7 +713,7 @@ void dd_scanner_start(DDDiskScanner *s, const char *root_path) {
     snprintf(s->progress.current_path, sizeof(s->progress.current_path), "%s", root_path);
     snprintf(s->target_root, sizeof(s->target_root), "%s", root_path);
 
-    load_ignore_file(root_path, s->exclude_patterns, &s->exclude_count, DD_MAX_EXCLUDES);
+    load_ignore_file(root_path, &s->global_excludes);
 
     s->building_tree = dd_tree_create(root_path);
     if (!s->building_tree) {
