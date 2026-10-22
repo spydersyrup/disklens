@@ -42,73 +42,78 @@ void dd_theme_init(DDTheme *t, bool is_dark) {
     t->is_dark = is_dark;
 
     if (!is_dark) {
-        t->background     = dd_color_hex(0xFFFFFF, 1.0);
-        t->panel          = dd_color_hex(0xF5F5F7, 1.0);
-        t->card           = dd_color_hex(0xFFFFFF, 1.0);
-        t->border         = dd_color_hex(0xD8D8DD, 1.0);
-        t->control_border = dd_color_hex(0x76767E, 1.0);
-        t->divider        = dd_color_hex(0xE5E5EA, 1.0);
-        t->chip           = dd_color_hex(0xF2F2F7, 1.0);
-        t->track          = dd_color_hex(0xE5E5EA, 1.0);
-        t->text           = dd_color_hex(0x1D1D1F, 1.0);
-        t->text_secondary = dd_color_hex(0x525257, 1.0);
-        t->text_tertiary  = dd_color_hex(0x595960, 1.0);
-        t->ink            = dd_color_hex(0xFF6B4A, 1.0);
-        t->on_ink         = dd_color_hex(0x0F172A, 1.0);
-        t->used           = dd_color_hex(0xFF3B30, 1.0);
+        /* Industrial Precision - Daylight Slate */
+        t->background     = dd_color_hex(0xFAFAFA, 1.0); /* Zinc 50 canvas */
+        t->panel          = dd_color_hex(0xF4F4F5, 1.0); /* Zinc 100 structural frame */
+        t->card           = dd_color_hex(0xFFFFFF, 1.0); /* Pure card surface */
+        t->border         = dd_color_hex(0xE4E4E7, 1.0); /* Zinc 200 hairline border */
+        t->control_border = dd_color_hex(0xD4D4D8, 1.0); /* Zinc 300 interactive border */
+        t->divider        = dd_color_hex(0xE4E4E7, 1.0); /* Zinc 200 divider */
+        t->chip           = dd_color_hex(0xF4F4F5, 1.0); /* Zinc 100 chip */
+        t->track          = dd_color_hex(0xE4E4E7, 1.0); /* Zinc 200 track */
+        t->text           = dd_color_hex(0x18181B, 1.0); /* Zinc 900 high-contrast ink */
+        t->text_secondary = dd_color_hex(0x52525B, 1.0); /* Zinc 600 metadata */
+        t->text_tertiary  = dd_color_hex(0x71717A, 1.0); /* Zinc 500 captions */
+        t->ink            = dd_color_hex(0xD97706, 1.0); /* Industrial Amber 600 accent */
+        t->on_ink         = dd_color_hex(0xFFFFFF, 1.0); /* High contrast on accent */
+        t->used           = dd_color_hex(0xDC2626, 1.0); /* Signal Red 600 */
         t->used_text      = dd_color_hex(0xB91C1C, 1.0);
-        t->free_col       = dd_color_hex(0x34C759, 1.0);
-        t->free_text      = dd_color_hex(0x157330, 1.0);
-        t->focus_ring     = dd_color_hex(0x0F172A, 1.0);
+        t->free_col       = dd_color_hex(0x059669, 1.0); /* Functional Emerald 600 */
+        t->free_text      = dd_color_hex(0x047857, 1.0);
+        t->focus_ring     = dd_color_hex(0xD97706, 1.0);
     } else {
-        t->background     = dd_color_hex(0x1E1E20, 1.0);
-        t->panel          = dd_color_hex(0x28282B, 1.0);
-        t->card           = dd_color_hex(0x2C2C2E, 1.0);
-        t->border         = dd_color_hex(0x3F3F43, 1.0);
-        t->control_border = dd_color_hex(0x8E8E96, 1.0);
-        t->divider        = dd_color_hex(0x38383A, 1.0);
-        t->chip           = dd_color_hex(0x3A3A3C, 1.0);
-        t->track          = dd_color_hex(0x3A3A3C, 1.0);
-        t->text           = dd_color_hex(0xF5F5F7, 1.0);
-        t->text_secondary = dd_color_hex(0xAEAEB2, 1.0);
-        t->text_tertiary  = dd_color_hex(0x9E9EA4, 1.0);
-        t->ink            = dd_color_hex(0xFF7A5C, 1.0);
-        t->on_ink         = dd_color_hex(0x0F172A, 1.0);
-        t->used           = dd_color_hex(0xFF453A, 1.0);
-        t->used_text      = dd_color_hex(0xFF6B63, 1.0);
-        t->free_col       = dd_color_hex(0x30D158, 1.0);
-        t->free_text      = dd_color_hex(0x4ADE80, 1.0);
-        t->focus_ring     = dd_color_hex(0xF5F5F7, 1.0);
+        /* Industrial Precision - Dark Graphite Pro */
+        t->background     = dd_color_hex(0x18181B, 1.0); /* Zinc 900 base canvas */
+        t->panel          = dd_color_hex(0x121215, 1.0); /* Deep graphite frame */
+        t->card           = dd_color_hex(0x202024, 1.0); /* Clean elevated surface */
+        t->border         = dd_color_hex(0x2E2E33, 1.0); /* Hairline 1px border */
+        t->control_border = dd_color_hex(0x3F3F46, 1.0); /* Zinc 700 interactive border */
+        t->divider        = dd_color_hex(0x27272A, 1.0); /* Zinc 800 divider */
+        t->chip           = dd_color_hex(0x27272A, 1.0); /* Zinc 800 chip */
+        t->track          = dd_color_hex(0x27272A, 1.0); /* Zinc 800 meter track */
+        t->text           = dd_color_hex(0xF4F4F5, 1.0); /* Zinc 100 crisp text */
+        t->text_secondary = dd_color_hex(0xA1A1AA, 1.0); /* Zinc 400 secondary */
+        t->text_tertiary  = dd_color_hex(0x71717A, 1.0); /* Zinc 500 tertiary */
+        t->ink            = dd_color_hex(0xF59E0B, 1.0); /* Industrial Amber 500 accent */
+        t->on_ink         = dd_color_hex(0x18181B, 1.0); /* High contrast on accent */
+        t->used           = dd_color_hex(0xEF4444, 1.0); /* Signal Red 500 */
+        t->used_text      = dd_color_hex(0xF87171, 1.0);
+        t->free_col       = dd_color_hex(0x10B981, 1.0); /* Functional Emerald 500 */
+        t->free_text      = dd_color_hex(0x34D399, 1.0);
+        t->focus_ring     = dd_color_hex(0xF59E0B, 1.0);
     }
 
-    t->pastel_text_primary   = dd_color_hex(0x0F172A, 1.0);
-    t->pastel_text_secondary = dd_color_hex(0x1E293B, 1.0);
+    t->pastel_text_primary   = dd_color_hex(0x18181B, 1.0);
+    t->pastel_text_secondary = dd_color_hex(0x27272A, 1.0);
 
-    t->categories[0] = dd_color_hex(0xFDA4AF, 1.0);
-    t->categories[1] = dd_color_hex(0xC4B5FD, 1.0);
-    t->categories[2] = dd_color_hex(0x7DD3FC, 1.0);
-    t->categories[3] = dd_color_hex(0xFCD34D, 1.0);
-    t->categories[4] = dd_color_hex(0x86EFAC, 1.0);
-    t->categories[5] = dd_color_hex(0xFDBA74, 1.0);
-    t->categories[6] = dd_color_hex(0x93C5FD, 1.0);
-    t->categories[7] = dd_color_hex(0x5EEAD4, 1.0);
-    t->categories[8] = dd_color_hex(0xCBD5E1, 1.0);
+    /* Muted, desaturated technical category spectrum (no candy neons) */
+    t->categories[0] = dd_color_hex(0x60A5FA, 1.0); /* Apps: Muted Steel Blue */
+    t->categories[1] = dd_color_hex(0xA78BFA, 1.0); /* Media: Muted Slate Violet */
+    t->categories[2] = dd_color_hex(0xF472B6, 1.0); /* Audio: Muted Rose */
+    t->categories[3] = dd_color_hex(0xFBBF24, 1.0); /* Images: Muted Warm Amber */
+    t->categories[4] = dd_color_hex(0x34D399, 1.0); /* Documents: Muted Sage */
+    t->categories[5] = dd_color_hex(0xFB923C, 1.0); /* Archives: Muted Terracotta */
+    t->categories[6] = dd_color_hex(0x38BDF8, 1.0); /* Developer / Code: Muted Sky */
+    t->categories[7] = dd_color_hex(0x9CA3AF, 1.0); /* System / Kernel: Neutral Gray */
+    t->categories[8] = dd_color_hex(0x6B7280, 1.0); /* Other / Binary: Cool Slate */
 
-    t->age_buckets[0] = dd_color_hex(0x34D399, 1.0);
-    t->age_buckets[1] = dd_color_hex(0x60A5FA, 1.0);
-    t->age_buckets[2] = dd_color_hex(0x818CF8, 1.0);
-    t->age_buckets[3] = dd_color_hex(0xA78BFA, 1.0);
-    t->age_buckets[4] = dd_color_hex(0xF472B6, 1.0);
-    t->age_buckets[5] = dd_color_hex(0xF87171, 1.0);
+    /* Monochromatic thermal age steps */
+    t->age_buckets[0] = dd_color_hex(0x34D399, 1.0); /* < 7d: Recent sage */
+    t->age_buckets[1] = dd_color_hex(0x60A5FA, 1.0); /* 7-30d: Active steel */
+    t->age_buckets[2] = dd_color_hex(0x94A3B8, 1.0); /* 1-3m: Settled slate */
+    t->age_buckets[3] = dd_color_hex(0x64748B, 1.0); /* 3-12m: Cool slate */
+    t->age_buckets[4] = dd_color_hex(0x475569, 1.0); /* 1-2y: Cold slate */
+    t->age_buckets[5] = dd_color_hex(0x334155, 1.0); /* > 2y: Dormant dark slate */
 
-    t->folder_families[0] = dd_color_hex(0x93C5FD, 1.0);
-    t->folder_families[1] = dd_color_hex(0x5EEAD4, 1.0);
-    t->folder_families[2] = dd_color_hex(0xC4B5FD, 1.0);
-    t->folder_families[3] = dd_color_hex(0xFCD34D, 1.0);
-    t->folder_families[4] = dd_color_hex(0xFDA4AF, 1.0);
-    t->folder_families[5] = dd_color_hex(0x86EFAC, 1.0);
-    t->folder_families[6] = dd_color_hex(0x7DD3FC, 1.0);
-    t->folder_families[7] = dd_color_hex(0xCBD5E1, 1.0);
+    /* Desaturated folder families */
+    t->folder_families[0] = dd_color_hex(0x60A5FA, 1.0);
+    t->folder_families[1] = dd_color_hex(0x34D399, 1.0);
+    t->folder_families[2] = dd_color_hex(0xFBBF24, 1.0);
+    t->folder_families[3] = dd_color_hex(0xA78BFA, 1.0);
+    t->folder_families[4] = dd_color_hex(0x38BDF8, 1.0);
+    t->folder_families[5] = dd_color_hex(0xFB923C, 1.0);
+    t->folder_families[6] = dd_color_hex(0x94A3B8, 1.0);
+    t->folder_families[7] = dd_color_hex(0x64748B, 1.0);
 }
 
 static void get_settings_path(char *buf, size_t cap) {

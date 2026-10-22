@@ -51,7 +51,7 @@ Every release includes `SHA256SUMS.txt` for verifying package integrity.
 ### Cleanup & Duplicates
 
 - **Three-pass duplicate finder**: High-speed duplicate identification using exact byte-size grouping, 16 KB head/tail SHA-256 pre-hashing, and full bounded streaming verification.
-- **Staged Cleanup Queue**: Items are never deleted immediately. Files are staged into an inspectable queue showing item counts and total reclaimable capacity.
+- **Staging Area for Safe Cleanup**: Items are never deleted immediately. Files are staged into an inspectable review area showing item counts and total reclaimable capacity.
 - **Safe Trash integration**: Moves files directly to system Trash (FreeDesktop.org Trash on Linux, Recycle Bin on Windows) with confirmation dialogs. Reclaimed space updates parent folder sizes in place.
 - **Application leftovers**: Detects unused caches, logs, and residual configuration directories in user profile locations.
 

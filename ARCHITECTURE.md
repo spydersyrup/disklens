@@ -24,7 +24,7 @@ The application is structured into modular subsystems:
       v                   v                      v
 +------------+    +---------------+    +--------------------+
 |  Scanner   |    | Visualization |    | Duplicate & Safety |
-|   Engine   |    |    Canvas     |    |   Cleanup Queue    |
+|   Engine   |    |    Canvas     |    |    Staging Area    |
 | (Scanning) |    | (Views/Theme) |    | (Utils/Models)     |
 +------------+    +---------------+    +--------------------+
 ```
@@ -33,7 +33,7 @@ The application is structured into modular subsystems:
 - **App Controller (`DiskSonarApp.c`)**: Manages UI state, view modes, active tab navigation, search queries, event routing, and verification self-checks.
 - **Scanner Engine (`DiskScanner.c`)**: Multi-threaded parallel filesystem crawler.
 - **Canvas & Views (`Canvas.c`, `Views.c`, `Theme.c`)**: Vector and bitmap software renderer for all 9 visualization modes.
-- **Cleanup & Trash (`DiskScanner.c`, `Utils.c`)**: Staged queue management and OS Trash integration.
+- **Cleanup & Trash (`DiskScanner.c`, `Utils.c`)**: Staging area management and OS Trash integration.
 
 ---
 
@@ -91,8 +91,8 @@ The duplicate engine uses a three-pass progressive filter to minimize disk I/O:
 
 DiskSonar enforces a strict zero-accidental-deletion policy:
 
-- **No Immediate Unlink**: Clicking an item never deletes it immediately. Items must be added to the inspectable **Cleanup Queue**.
-- **Interactive Review**: The user reviews the staged queue count, paths, and total reclaimable bytes.
+- **No Immediate Unlink**: Clicking an item never deletes it immediately. Items must be staged in the inspectable **Staging Area**.
+- **Interactive Review**: The user reviews staged item counts, file paths, and total reclaimable bytes.
 - **System Trash / Recycle Bin**: When confirmed, files are moved to system Trash:
   - **Linux**: FreeDesktop.org Trash specification (`$XDG_DATA_HOME/Trash/files` and `info`).
   - **Windows**: `SHFileOperation` / `IFileOperation` with `FO_DELETE` and `FOF_ALLOWUNDO`.

@@ -358,24 +358,24 @@ void dd_canvas_folder_card(DDCanvas *cv, DDRect r, DDColor fill, DDColor stroke,
     if (hovered) {
         dr.y -= 2.0;
         DDRect sh = {r.x + 2, r.y + 4, r.w, r.h - 2};
-        dd_canvas_round_rect(cv, sh, 10.0, dd_color_hex(0x000000, 0.14), dd_color_hex(0, 0), 0);
+        dd_canvas_round_rect(cv, sh, 4.0, dd_color_hex(0x000000, 0.18), dd_color_hex(0, 0), 0);
     }
 #ifdef _WIN32
     DDRect tab = {dr.x, dr.y, dr.w * 0.38, 12.0};
     DDRect body = {dr.x, dr.y + 8.0, dr.w, dr.h - 8.0};
-    dd_canvas_round_rect(cv, tab, 6.0, fill, stroke, 1.0);
-    dd_canvas_round_rect(cv, body, 10.0, fill, stroke, 1.0);
+    dd_canvas_round_rect(cv, tab, 4.0, fill, stroke, 1.0);
+    dd_canvas_round_rect(cv, body, 4.0, fill, stroke, 1.0);
 #else
     if (!cv->cr) return;
     double tab_w = dr.w * 0.36;
     if (tab_w > 96.0) tab_w = 96.0;
     double tab_h = 9.0;
-    double rad = 9.0;
+    double rad = 4.0;
 
     C.new_path(cv->cr);
     C.move_to(cv->cr, dr.x + rad, dr.y);
-    C.line_to(cv->cr, dr.x + tab_w - 6.0, dr.y);
-    C.line_to(cv->cr, dr.x + tab_w + 6.0, dr.y + tab_h);
+    C.line_to(cv->cr, dr.x + tab_w - 4.0, dr.y);
+    C.line_to(cv->cr, dr.x + tab_w + 4.0, dr.y + tab_h);
     C.line_to(cv->cr, dr.x + dr.w - rad, dr.y + tab_h);
     C.arc(cv->cr, dr.x + dr.w - rad, dr.y + tab_h + rad, rad, -M_PI * 0.5, 0);
     C.arc(cv->cr, dr.x + dr.w - rad, dr.y + dr.h - rad, rad, 0, M_PI * 0.5);
@@ -386,11 +386,8 @@ void dd_canvas_folder_card(DDCanvas *cv, DDRect r, DDColor fill, DDColor stroke,
     C.set_source_rgba(cv->cr, fill.r, fill.g, fill.b, fill.a);
     C.fill_preserve(cv->cr);
     C.set_source_rgba(cv->cr, stroke.r, stroke.g, stroke.b, stroke.a);
-    C.set_line_width(cv->cr, hovered ? 1.6 : 1.0);
+    C.set_line_width(cv->cr, hovered ? 1.5 : 1.0);
     C.stroke(cv->cr);
-
-    DDRect sheen = {dr.x + 2, dr.y + tab_h + 1, dr.w - 4, 14};
-    dd_canvas_round_rect(cv, sheen, 6.0, dd_color_hex(0xFFFFFF, 0.22), dd_color_hex(0, 0), 0);
 #endif
 }
 
