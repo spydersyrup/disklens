@@ -45,7 +45,7 @@ typedef struct {
 } DDFolderExtra;
 
 typedef struct {
-    char root_path[512];
+    char root_path[4096];
     DDFileNode *nodes;
     int32_t node_count;
     int32_t node_cap;
@@ -58,7 +58,7 @@ typedef struct {
 
     double scan_duration;
     int32_t denied_count;
-    char denied_samples[8][512];
+    char denied_samples[8][1024];
     int32_t denied_sample_count;
     uint32_t generation;
 } DDFileTree;

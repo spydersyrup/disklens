@@ -441,6 +441,73 @@ static int run_verification_suite(DDAppState *st, DDCanvas *cv, const char *scan
         printf("[PASS] Exclusion rules and .disksonarignore filters -> correctly excluded patterns and ignore files\n");
     }
 
+    /* 5. Verify deep path traversal (>600 chars) and dynamic rule capacity */
+    {
+        DDDiskScanner *sc = dd_scanner_create();
+        for (int r = 0; r < 80; r++) {
+            char rbuf[64];
+            snprintf(rbuf, sizeof(rbuf), "custom_pattern_%d", r);
+            dd_scanner_add_exclude(sc, rbuf);
+        }
+        if (!dd_scanner_is_excluded(sc, "custom_pattern_79", false)) {
+            fprintf(stderr, "[FAIL] Dynamic exclusion failed past 64 patterns\n");
+            dd_scanner_destroy(sc);
+            return 1;
+        }
+
+#ifndef _WIN32
+        const char *base = "/tmp/disksonar_deep_test";
+        char cur_deep[2048];
+        snprintf(cur_deep, sizeof(cur_deep), "%s", base);
+        system("rm -rf /tmp/disksonar_deep_test");
+        for (int d = 0; d < 24; d++) {
+            char next_deep[2048];
+            snprintf(next_deep, sizeof(next_deep), "%s/deep_subfolder_segment_%02d", cur_deep, d);
+            char mk_cmd[2200];
+            snprintf(mk_cmd, sizeof(mk_cmd), "mkdir -p \"%s\"", next_deep);
+            system(mk_cmd);
+            snprintf(cur_deep, sizeof(cur_deep), "%s", next_deep);
+        }
+        char deep_file[2048];
+        snprintf(deep_file, sizeof(deep_file), "%s/leaf_test_node.txt", cur_deep);
+        FILE *df = fopen(deep_file, "w");
+        if (df) { fprintf(df, "deep payload\n"); fclose(df); }
+
+        dd_scanner_start(sc, base);
+        DDScanProgress prog;
+        do {
+            usleep(10000);
+            dd_scanner_get_progress(sc, &prog);
+        } while (prog.is_running);
+
+        DDFileTree *dt = dd_scanner_take_result(sc);
+        bool found_leaf = false;
+        char resolved_path[4096] = "";
+        if (dt) {
+            for (int32_t i = 0; i < dt->node_count; i++) {
+                if (strcmp(dd_node_name(dt, i), "leaf_test_node.txt") == 0) {
+                    found_leaf = true;
+                    dd_node_build_path(dt, i, resolved_path, sizeof(resolved_path));
+                    break;
+                }
+            }
+        }
+        system("rm -rf /tmp/disksonar_deep_test");
+        dd_scanner_destroy(sc);
+
+        if (!found_leaf || strlen(resolved_path) < 650 || strcmp(resolved_path, deep_file) != 0) {
+            fprintf(stderr, "[FAIL] Deep path test failed: found=%d, len=%zu (expected %zu), match=%d\n",
+                    found_leaf, strlen(resolved_path), strlen(deep_file), strcmp(resolved_path, deep_file) == 0);
+            if (dt) dd_tree_free(dt);
+            return 1;
+        }
+        dd_tree_free_async(dt);
+#else
+        dd_scanner_destroy(sc);
+#endif
+        printf("[PASS] Deep path traversal (>600 bytes) and dynamic rule capacity verified\n");
+    }
+
     return 0;
 }
 
