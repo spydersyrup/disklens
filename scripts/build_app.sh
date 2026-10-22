@@ -58,4 +58,10 @@ cp -f Packaging/disksonar.desktop.template "dist/${APP_EXEC}.desktop"
 cp -f Packaging/Icon/disksonar.png "dist/${APP_EXEC}.png"
 
 echo "Build complete:"
-ls -lh "dist/${APP_EXEC}" "dist/${APP_WIN_EXEC}" 2>/dev/null || ls -lh "dist/${APP_EXEC}"
+if [ -f "dist/${APP_EXEC}" ] && [ -f "dist/${APP_WIN_EXEC}" ]; then
+    ls -lh "dist/${APP_EXEC}" "dist/${APP_WIN_EXEC}"
+elif [ -f "dist/${APP_WIN_EXEC}" ]; then
+    ls -lh "dist/${APP_WIN_EXEC}"
+elif [ -f "dist/${APP_EXEC}" ]; then
+    ls -lh "dist/${APP_EXEC}"
+fi
