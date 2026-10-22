@@ -21,6 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CI Artifact Uploads**: Automated GitHub Actions artifact uploads for `disksonar-linux-x86_64` and `DiskSonar-windows-x86_64` binaries on every push and pull request.
 
 ### Changed
+- **Industrial Precision UI Redesign**: Overhauled design system to Graphite Pro styling (dark zinc/graphite canvas `#18181B`, `#202024` cards, `#2E2E33` borders, and high-visibility `#F59E0B` industrial amber accent). Replaced neon candy palettes with muted, desaturated functional color spectrum.
+- **Precision 4px Corner Geometry**: Standardized 4.0px corner radii across all window cards, list rows, toolbars, modal dialogs, and popovers, replacing oversized bubbly curves.
+- **Standard Systems Terminology**: Standardized navigation tabs and feature naming (Overview, Duplicate Finder, App Storage, Resource Monitor, Snapshots). Replaced queue concepts with Staging Area and Stage for Cleanup.
 - Deduplicated SHA-256 checksum generation in release packaging script.
 - Added seccomp unconfined option and fallback handling for Docker-based Inno Setup compilation.
 

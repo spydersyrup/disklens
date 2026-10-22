@@ -56,30 +56,30 @@ static DDIconType category_icon(DDFileCategory cat, bool is_dir) {
 }
 
 static void draw_ink_button(DDCanvas *cv, const DDTheme *th, DDRect r, const char *label, int action, int p1, int p2, const char *pstr) {
-    dd_canvas_round_rect(cv, r, 8.0, th->ink, th->control_border, 1.0);
-    dd_canvas_text_center(cv, r, label, 13.0, true, false, th->on_ink);
+    dd_canvas_round_rect(cv, r, 4.0, th->ink, th->control_border, 1.0);
+    dd_canvas_text_center(cv, r, label, 12.5, true, false, th->on_ink);
     dd_canvas_register_hit(cv, action, p1, p2, pstr, label, r, true);
 }
 
 static void draw_outline_button(DDCanvas *cv, const DDTheme *th, DDRect r, const char *label, bool active, int action, int p1, int p2, const char *pstr) {
-    DDColor fill = active ? th->ink : th->card;
-    DDColor fg = active ? th->on_ink : th->text;
-    dd_canvas_round_rect(cv, r, 8.0, fill, th->control_border, 1.0);
-    dd_canvas_text_center(cv, r, label, 12.5, active, false, fg);
+    DDColor fill = active ? th->chip : th->card;
+    DDColor border_c = active ? th->ink : th->control_border;
+    dd_canvas_round_rect(cv, r, 4.0, fill, border_c, active ? 1.5 : 1.0);
+    dd_canvas_text_center(cv, r, label, 12.0, active, false, active ? th->text : th->text_secondary);
     dd_canvas_register_hit(cv, action, p1, p2, pstr, label, r, true);
 }
 
 static void draw_square_icon_button(DDCanvas *cv, const DDTheme *th, DDRect r, DDIconType icon, bool active, const char *label, int action, int p1) {
-    DDColor fill = active ? th->ink : th->chip;
-    DDColor fg = active ? th->on_ink : th->text;
-    dd_canvas_round_rect(cv, r, 8.0, fill, th->control_border, 1.0);
-    double isz = 16.0;
-    dd_canvas_draw_icon(cv, icon, r.x + (r.w - isz) * 0.5, r.y + (r.h - isz) * 0.5, isz, fg);
+    DDColor fill = active ? th->chip : th->card;
+    DDColor border_c = active ? th->ink : th->border;
+    dd_canvas_round_rect(cv, r, 4.0, fill, border_c, active ? 1.5 : 1.0);
+    double isz = 15.0;
+    dd_canvas_draw_icon(cv, icon, r.x + (r.w - isz) * 0.5, r.y + (r.h - isz) * 0.5, isz, active ? th->text : th->text_secondary);
     dd_canvas_register_hit(cv, action, p1, 0, NULL, label, r, true);
 }
 
 static void draw_section_caption(DDCanvas *cv, const DDTheme *th, double x, double y, const char *title) {
-    dd_canvas_text(cv, x, y, title, 11.0, true, false, th->text_tertiary);
+    dd_canvas_text(cv, x, y, title, 10.5, true, false, th->text_tertiary);
 }
 
 static bool is_folder_expanded(const DDAppState *st, int32_t node_idx) {
@@ -246,102 +246,105 @@ bool dd_app_tick(DDAppState *st) {
 
 static void render_top_bar(DDAppState *st, DDCanvas *cv, int W) {
     const DDTheme *th = &st->theme;
-    DDRect bar = {0, 0, (double)W, 56.0};
+    DDRect bar = {0, 0, (double)W, 54.0};
     dd_canvas_fill_rect(cv, bar, th->panel);
-    dd_canvas_fill_rect(cv, (DDRect){0, 55.0, (double)W, 1.0}, th->divider);
+    dd_canvas_fill_rect(cv, (DDRect){0, 53.0, (double)W, 1.0}, th->divider);
 
     double x = 16.0;
     if (W < 860) {
-        draw_outline_button(cv, th, (DDRect){x, 12.0, 58.0, 32.0}, "Menu", st->show_sidebar_drawer, ACT_TOGGLE_SIDEBAR_DRAWER, 0, 0, NULL);
+        draw_outline_button(cv, th, (DDRect){x, 11.0, 58.0, 32.0}, "Menu", st->show_sidebar_drawer, ACT_TOGGLE_SIDEBAR_DRAWER, 0, 0, NULL);
         x += 66.0;
     } else {
-        dd_canvas_text(cv, x, 34.0, "DiskSonar", 15.0, true, false, th->text);
+        dd_canvas_text(cv, x, 33.0, "DiskSonar", 14.5, true, false, th->text);
         x += 84.0;
     }
 
-    const char *tab_names[5] = {"Explore", "Duplicates", "Applications", "Monitor", "Snapshots"};
-    const char *tab_short[5] = {"Exp", "Dup", "Apps", "Mon", "Snap"};
+    const char *tab_names[5] = {"Overview", "Duplicate Finder", "App Storage", "Resource Monitor", "Snapshots"};
+    const char *tab_short[5] = {"Over", "Dups", "Apps", "Mon", "Snaps"};
     bool compact_tabs = (W < 1180);
 
     for (int t = 0; t < 5; t++) {
         bool active = ((int)st->active_tab == t);
         const char *lbl = (compact_tabs && !active) ? tab_short[t] : tab_names[t];
-        double tw = dd_canvas_measure_text(cv, lbl, 12.5, active, false) + (compact_tabs ? 20.0 : 26.0);
-        DDRect tr = {x, 12.0, tw, 32.0};
-        DDColor fill = active ? th->ink : th->chip;
-        DDColor fg = active ? th->on_ink : th->text;
-        dd_canvas_round_rect(cv, tr, 16.0, fill, active ? th->control_border : th->border, 1.0);
-        dd_canvas_text_center(cv, tr, lbl, 12.5, active, false, fg);
+        double tw = dd_canvas_measure_text(cv, lbl, 12.0, active, false) + (compact_tabs ? 18.0 : 24.0);
+        DDRect tr = {x, 11.0, tw, 32.0};
+        DDColor fill = active ? th->card : th->chip;
+        DDColor fg = active ? th->text : th->text_secondary;
+        dd_canvas_round_rect(cv, tr, 4.0, fill, active ? th->control_border : th->border, 1.0);
+        if (active) {
+            dd_canvas_fill_rect(cv, (DDRect){tr.x + 4.0, tr.y + tr.h - 2.0, tr.w - 8.0, 2.0}, th->ink);
+        }
+        dd_canvas_text_center(cv, tr, lbl, 12.0, active, false, fg);
         dd_canvas_register_hit(cv, ACT_SWITCH_TAB, t, 0, NULL, tab_names[t], tr, true);
-        x += tw + 6.0;
+        x += tw + 4.0;
     }
 
     double right_x = (double)W - 14.0;
 
-    DDRect insp_btn = {right_x - 34.0, 11.0, 34.0, 34.0};
+    DDRect insp_btn = {right_x - 32.0, 11.0, 32.0, 32.0};
     draw_square_icon_button(cv, th, insp_btn, ICON_SIDEBAR_RIGHT, st->show_inspector && st->active_tab == TAB_EXPLORE, "Toggle Inspector", ACT_TOGGLE_INSPECTOR, 0);
-    right_x -= 42.0;
+    right_x -= 38.0;
 
-    DDRect theme_btn = {right_x - 34.0, 11.0, 34.0, 34.0};
+    DDRect theme_btn = {right_x - 32.0, 11.0, 32.0, 32.0};
     draw_square_icon_button(cv, th, theme_btn, th->is_dark ? ICON_SUN : ICON_MOON, false, "Toggle Theme", ACT_TOGGLE_THEME, 0);
-    right_x -= 42.0;
+    right_x -= 38.0;
 
-    DDRect help_btn = {right_x - 34.0, 11.0, 34.0, 34.0};
-    dd_canvas_round_rect(cv, help_btn, 8.0, st->show_shortcuts_help ? th->ink : th->card, th->control_border, 1.0);
-    dd_canvas_text_center(cv, help_btn, "?", 14.0, true, false, st->show_shortcuts_help ? th->on_ink : th->text);
+    DDRect help_btn = {right_x - 32.0, 11.0, 32.0, 32.0};
+    dd_canvas_round_rect(cv, help_btn, 4.0, st->show_shortcuts_help ? th->ink : th->card, th->control_border, 1.0);
+    dd_canvas_text_center(cv, help_btn, "?", 13.0, true, false, st->show_shortcuts_help ? th->on_ink : th->text);
     dd_canvas_register_hit(cv, ACT_TOGGLE_SHORTCUTS_HELP, 0, 0, NULL, "Shortcuts Help (?)", help_btn, true);
-    right_x -= 42.0;
+    right_x -= 38.0;
 
-    double q_w = (W < 960) ? 74.0 : 148.0;
-    DDRect q_btn = {right_x - q_w, 11.0, q_w, 34.0};
-    dd_canvas_round_rect(cv, q_btn, 17.0, st->show_queue_popover ? th->ink : th->card, th->control_border, 1.0);
-    DDColor q_fg = st->show_queue_popover ? th->on_ink : th->text;
-    dd_canvas_draw_icon(cv, ICON_TRASH, q_btn.x + 10.0, q_btn.y + 9.0, 16.0, q_fg);
+    double q_w = (W < 960) ? 68.0 : 138.0;
+    DDRect q_btn = {right_x - q_w, 11.0, q_w, 32.0};
+    dd_canvas_round_rect(cv, q_btn, 4.0, st->show_queue_popover ? th->chip : th->card, st->show_queue_popover ? th->ink : th->control_border, 1.0);
+    DDColor q_fg = th->text;
+    dd_canvas_draw_icon(cv, ICON_TRASH, q_btn.x + 8.0, q_btn.y + 8.0, 16.0, (st->cleanup_queue.count > 0) ? th->used : q_fg);
     if (W >= 960) {
-        dd_canvas_text(cv, q_btn.x + 30.0, q_btn.y + 22.0, "Cleanup Queue", 12.0, true, false, q_fg);
+        dd_canvas_text(cv, q_btn.x + 28.0, q_btn.y + 21.0, "Staging Area", 11.5, true, false, q_fg);
     }
     if (st->cleanup_queue.count > 0) {
         char bstr[16];
         snprintf(bstr, sizeof(bstr), "%d", st->cleanup_queue.count);
-        double bw = dd_canvas_measure_text(cv, bstr, 11.0, true, false) + 12.0;
-        if (bw < 20.0) bw = 20.0;
-        DDRect badge = {q_btn.x + q_btn.w - bw - 6.0, q_btn.y + 7.0, bw, 20.0};
-        dd_canvas_round_rect(cv, badge, 10.0, th->used, th->on_ink, 1.0);
-        dd_canvas_text_center(cv, badge, bstr, 11.0, true, false, dd_color_hex(0xFFFFFF, 1.0));
+        double bw = dd_canvas_measure_text(cv, bstr, 10.5, true, false) + 8.0;
+        if (bw < 18.0) bw = 18.0;
+        DDRect badge = {q_btn.x + q_btn.w - bw - 5.0, q_btn.y + 7.0, bw, 18.0};
+        dd_canvas_round_rect(cv, badge, 3.0, th->used, th->on_ink, 1.0);
+        dd_canvas_text_center(cv, badge, bstr, 10.5, true, false, dd_color_hex(0xFFFFFF, 1.0));
     }
-    dd_canvas_register_hit(cv, ACT_TOGGLE_QUEUE_POPOVER, 0, 0, NULL, "Cleanup Queue", q_btn, true);
+    dd_canvas_register_hit(cv, ACT_TOGGLE_QUEUE_POPOVER, 0, 0, NULL, "Staging Area", q_btn, true);
     right_x -= (q_w + 10.0);
 
-    double search_w = (W >= 1280) ? 210.0 : (W >= 960 ? 150.0 : 110.0);
-    DDRect s_box = {right_x - search_w, 11.0, search_w, 34.0};
-    dd_canvas_round_rect(cv, s_box, 17.0, th->card, st->search_focused ? th->ink : th->control_border, st->search_focused ? 2.0 : 1.0);
-    dd_canvas_draw_icon(cv, ICON_SEARCH, s_box.x + 10.0, s_box.y + 9.0, 15.0, th->text_secondary);
+    double search_w = (W >= 1280) ? 200.0 : (W >= 960 ? 140.0 : 100.0);
+    DDRect s_box = {right_x - search_w, 11.0, search_w, 32.0};
+    dd_canvas_round_rect(cv, s_box, 4.0, th->card, st->search_focused ? th->ink : th->control_border, st->search_focused ? 1.5 : 1.0);
+    dd_canvas_draw_icon(cv, ICON_SEARCH, s_box.x + 8.0, s_box.y + 8.0, 15.0, th->text_secondary);
     if (st->search_query[0]) {
-        dd_canvas_text_clipped(cv, (DDRect){s_box.x + 28.0, s_box.y, s_box.w - 54.0, s_box.h}, st->search_query, 12.0, false, false, th->text);
-        DDRect clr = {s_box.x + s_box.w - 26.0, s_box.y + 7.0, 20.0, 20.0};
+        dd_canvas_text_clipped(cv, (DDRect){s_box.x + 26.0, s_box.y, s_box.w - 50.0, s_box.h}, st->search_query, 11.5, false, false, th->text);
+        DDRect clr = {s_box.x + s_box.w - 24.0, s_box.y + 6.0, 20.0, 20.0};
         dd_canvas_draw_icon(cv, ICON_CLOSE, clr.x + 3.0, clr.y + 3.0, 14.0, th->text_secondary);
         dd_canvas_register_hit(cv, ACT_CLEAR_SEARCH, 0, 0, NULL, "Clear Filter", clr, true);
     } else {
-        dd_canvas_text_clipped(cv, (DDRect){s_box.x + 28.0, s_box.y, s_box.w - 64.0, s_box.h}, "Filter by name...", 12.0, false, false, th->text_tertiary);
-        if (search_w >= 150.0) {
-            dd_canvas_text_Right(cv, s_box.x + s_box.w - 10.0, s_box.y + 21.0, "Ctrl+K", 10.5, false, true, th->text_tertiary);
+        dd_canvas_text_clipped(cv, (DDRect){s_box.x + 26.0, s_box.y, s_box.w - 56.0, s_box.h}, "Filter tree...", 11.5, false, false, th->text_tertiary);
+        if (search_w >= 140.0) {
+            dd_canvas_text_Right(cv, s_box.x + s_box.w - 8.0, s_box.y + 20.0, "Ctrl+K", 10.0, false, true, th->text_tertiary);
         }
     }
-    dd_canvas_register_hit(cv, ACT_FOCUS_SEARCH, 0, 0, NULL, "Filter by name", (DDRect){s_box.x, s_box.y, s_box.w - 28.0, s_box.h}, true);
-    right_x -= (search_w + 12.0);
+    dd_canvas_register_hit(cv, ACT_FOCUS_SEARCH, 0, 0, NULL, "Filter tree", (DDRect){s_box.x, s_box.y, s_box.w - 26.0, s_box.h}, true);
+    right_x -= (search_w + 10.0);
 
     if (st->active_tab == TAB_EXPLORE && st->tree && x + 80.0 < right_x) {
-        dd_canvas_fill_rect(cv, (DDRect){x + 2.0, 14.0, 1.0, 28.0}, th->divider);
-        x += 12.0;
+        dd_canvas_fill_rect(cv, (DDRect){x + 2.0, 13.0, 1.0, 28.0}, th->divider);
+        x += 10.0;
 
         bool can_back = (st->current_folder > 0);
-        DDRect back_r = {x, 13.0, 28.0, 30.0};
-        dd_canvas_round_rect(cv, back_r, 6.0, th->chip, th->border, 1.0);
+        DDRect back_r = {x, 12.0, 28.0, 30.0};
+        dd_canvas_round_rect(cv, back_r, 4.0, th->chip, th->border, 1.0);
         dd_canvas_draw_icon(cv, ICON_CHEVRON_LEFT, back_r.x + 6.0, back_r.y + 7.0, 16.0, can_back ? th->text : th->text_tertiary);
         if (can_back) {
             dd_canvas_register_hit(cv, ACT_NAV_BACK, 0, 0, NULL, "Navigate Up", back_r, true);
         }
-        x += 34.0;
+        x += 32.0;
 
         int32_t chain[64];
         int clen = 0;
@@ -354,16 +357,16 @@ static void render_top_bar(DDAppState *st, DDCanvas *cv, int W) {
         for (int i = start - 1; i >= 0; i--) {
             int32_t nidx = chain[i];
             const char *nm = dd_node_name(st->tree, nidx);
-            double nw = dd_canvas_measure_text(cv, nm, 12.0, i == 0, false) + 16.0;
+            double nw = dd_canvas_measure_text(cv, nm, 11.5, i == 0, false) + 14.0;
             if (nw > 140.0) nw = 140.0;
             if (x + nw > right_x) break;
-            DDRect cr = {x, 14.0, nw, 28.0};
-            dd_canvas_round_rect(cv, cr, 6.0, (i == 0) ? th->card : th->chip, th->border, 1.0);
-            dd_canvas_text_clipped(cv, (DDRect){cr.x + 8.0, cr.y, cr.w - 16.0, cr.h}, nm, 12.0, i == 0, false, th->text);
+            DDRect cr = {x, 13.0, nw, 28.0};
+            dd_canvas_round_rect(cv, cr, 4.0, (i == 0) ? th->card : th->chip, th->border, 1.0);
+            dd_canvas_text_clipped(cv, (DDRect){cr.x + 6.0, cr.y, cr.w - 12.0, cr.h}, nm, 11.5, i == 0, false, th->text);
             dd_canvas_register_hit(cv, ACT_BREADCRUMB, nidx, 0, NULL, nm, cr, true);
             x += nw + 4.0;
             if (i > 0 && x + 12.0 < right_x) {
-                dd_canvas_text(cv, x, 32.0, "/", 12.0, false, false, th->text_tertiary);
+                dd_canvas_text(cv, x, 31.0, "/", 11.5, false, false, th->text_tertiary);
                 x += 10.0;
             }
         }
@@ -382,97 +385,100 @@ static void render_sidebar(DDAppState *st, DDCanvas *cv, DDRect sb) {
     double y = y0;
     double now = dd_now_seconds();
 
-    draw_ink_button(cv, th, (DDRect){x, y, w, 38.0}, "Scan Full System", ACT_SCAN_ROOT, 0, 0, NULL);
-    y += 46.0;
+    draw_ink_button(cv, th, (DDRect){x, y, w, 34.0}, "Scan Full System", ACT_SCAN_ROOT, 0, 0, NULL);
+    y += 40.0;
 
     double hw = (w - 8.0) * 0.5;
-    draw_outline_button(cv, th, (DDRect){x, y, hw, 34.0}, "Home", false, ACT_SCAN_HOME, 0, 0, NULL);
-    draw_outline_button(cv, th, (DDRect){x + hw + 8.0, y, hw, 34.0}, "Folder...", false, ACT_SCAN_PICK, 0, 0, NULL);
-    y += 46.0;
+    draw_outline_button(cv, th, (DDRect){x, y, hw, 30.0}, "Home", false, ACT_SCAN_HOME, 0, 0, NULL);
+    draw_outline_button(cv, th, (DDRect){x + hw + 8.0, y, hw, 30.0}, "Folder...", false, ACT_SCAN_PICK, 0, 0, NULL);
+    y += 42.0;
 
     if (st->settings.recent_count > 0) {
-        draw_section_caption(cv, th, x, y + 10.0, "RECENT");
+        draw_section_caption(cv, th, x, y + 10.0, "RECENT SCANS");
         y += 18.0;
         for (int i = 0; i < st->settings.recent_count; i++) {
             DDRect rr = {x, y, w, 26.0};
-            dd_canvas_round_rect(cv, rr, 6.0, th->card, th->border, 1.0);
+            dd_canvas_round_rect(cv, rr, 4.0, th->card, th->border, 1.0);
             char trunc[96];
             dd_truncate_middle(st->settings.recent_paths[i], 36, trunc, sizeof(trunc));
-            dd_canvas_draw_icon(cv, ICON_FOLDER, rr.x + 8.0, rr.y + 6.0, 14.0, th->ink);
-            dd_canvas_text_clipped(cv, (DDRect){rr.x + 26.0, rr.y, rr.w - 32.0, rr.h}, trunc, 11.5, false, true, th->text);
+            dd_canvas_draw_icon(cv, ICON_FOLDER, rr.x + 8.0, rr.y + 6.0, 14.0, th->text_secondary);
+            dd_canvas_text_clipped(cv, (DDRect){rr.x + 26.0, rr.y, rr.w - 32.0, rr.h}, trunc, 11.0, false, true, th->text);
             dd_canvas_register_hit(cv, ACT_SCAN_RECENT, i, 0, st->settings.recent_paths[i], trunc, rr, true);
             y += 30.0;
         }
         y += 8.0;
     }
 
-    draw_section_caption(cv, th, x, y + 10.0, "DISK STORAGE");
+    draw_section_caption(cv, th, x, y + 10.0, "STORAGE USAGE");
     y += 18.0;
-    DDRect disk_card = {x, y, w, 108.0};
-    dd_canvas_round_rect(cv, disk_card, 10.0, th->card, th->border, 1.0);
+    DDRect disk_card = {x, y, w, 92.0};
+    dd_canvas_round_rect(cv, disk_card, 4.0, th->card, th->border, 1.0);
 
-    double ring_cx = x + 48.0, ring_cy = y + 54.0;
     double used_ratio = (st->primary_vol.total_bytes > 0)
         ? ((double)st->primary_vol.used_bytes / (double)st->primary_vol.total_bytes) : 0.0;
     if (used_ratio > 1.0) used_ratio = 1.0;
-    dd_canvas_arc_ring(cv, ring_cx, ring_cy, 24.0, 34.0, 0.0, 2.0 * M_PI, th->track, dd_color_hex(0,0));
-    if (used_ratio > 0.01) {
-        dd_canvas_arc_ring(cv, ring_cx, ring_cy, 24.0, 34.0, -M_PI * 0.5, -M_PI * 0.5 + used_ratio * 2.0 * M_PI, th->ink, dd_color_hex(0,0));
-    }
-    char pct_str[32];
-    snprintf(pct_str, sizeof(pct_str), "%.0f%%", used_ratio * 100.0);
-    dd_canvas_text_center(cv, (DDRect){ring_cx - 24.0, ring_cy - 14.0, 48.0, 18.0}, pct_str, 11.5, true, false, th->text);
-    dd_canvas_text_center(cv, (DDRect){ring_cx - 24.0, ring_cy + 1.0, 48.0, 14.0}, "USED", 8.5, true, false, th->text_tertiary);
 
-    double tx = x + 96.0;
-    dd_canvas_text_clipped(cv, (DDRect){tx, y + 8.0, w - 104.0, 18.0}, st->primary_vol.name, 12.5, true, false, th->text);
+    dd_canvas_text_clipped(cv, (DDRect){x + 10.0, y + 8.0, w - 84.0, 18.0}, st->primary_vol.name, 12.0, true, false, th->text);
+    char pct_str[32];
+    snprintf(pct_str, sizeof(pct_str), "%.0f%% used", used_ratio * 100.0);
+    dd_canvas_text_Right(cv, x + w - 10.0, y + 20.0, pct_str, 11.5, true, true, (used_ratio > 0.9) ? th->used : th->ink);
+
+    DDRect pbar_bg = {x + 10.0, y + 30.0, w - 20.0, 8.0};
+    dd_canvas_round_rect(cv, pbar_bg, 2.0, th->track, dd_color_hex(0,0), 0.0);
+    if (used_ratio > 0.005) {
+        DDRect pbar_fg = {x + 10.0, y + 30.0, (w - 20.0) * used_ratio, 8.0};
+        dd_canvas_round_rect(cv, pbar_fg, 2.0, (used_ratio > 0.9) ? th->used : th->ink, dd_color_hex(0,0), 0.0);
+    }
+
     char b_tot[32], b_used[32], b_free[32];
     dd_format_bytes(st->primary_vol.total_bytes, b_tot, sizeof(b_tot));
     dd_format_bytes(st->primary_vol.used_bytes, b_used, sizeof(b_used));
     dd_format_bytes(st->primary_vol.free_bytes, b_free, sizeof(b_free));
 
-    dd_canvas_text(cv, tx, y + 44.0, "Total", 11.5, false, false, th->text_secondary);
-    dd_canvas_text_Right(cv, x + w - 12.0, y + 44.0, b_tot, 11.5, true, true, th->text);
-    dd_canvas_text(cv, tx, y + 66.0, "Used", 11.5, false, false, th->used_text);
-    dd_canvas_text_Right(cv, x + w - 12.0, y + 66.0, b_used, 11.5, true, true, th->used_text);
-    dd_canvas_text(cv, tx, y + 88.0, "Free", 11.5, false, false, th->free_text);
-    dd_canvas_text_Right(cv, x + w - 12.0, y + 88.0, b_free, 11.5, true, true, th->free_text);
-    y += 120.0;
+    dd_canvas_text(cv, x + 10.0, y + 54.0, "Used", 11.0, false, false, th->text_secondary);
+    dd_canvas_text_Right(cv, x + w * 0.48, y + 54.0, b_used, 11.0, true, true, th->used_text);
+
+    dd_canvas_text(cv, x + w * 0.52, y + 54.0, "Free", 11.0, false, false, th->text_secondary);
+    dd_canvas_text_Right(cv, x + w - 10.0, y + 54.0, b_free, 11.0, true, true, th->free_text);
+
+    dd_canvas_text(cv, x + 10.0, y + 74.0, "Capacity", 10.5, false, false, th->text_tertiary);
+    dd_canvas_text_Right(cv, x + w - 10.0, y + 74.0, b_tot, 10.5, false, true, th->text_tertiary);
+    y += 104.0;
 
     if (st->tree) {
-        draw_section_caption(cv, th, x, y + 10.0, "CURRENT VIEW");
+        draw_section_caption(cv, th, x, y + 10.0, "CURRENT SELECTION");
         y += 18.0;
-        DDRect cv_card = {x, y, w, 92.0};
-        dd_canvas_round_rect(cv, cv_card, 10.0, th->card, th->border, 1.0);
+        DDRect cv_card = {x, y, w, 88.0};
+        dd_canvas_round_rect(cv, cv_card, 4.0, th->card, th->border, 1.0);
         const char *fname = dd_node_name(st->tree, st->current_folder);
         char dur_str[32], dur_lbl[48];
         dd_format_duration(st->tree->scan_duration, dur_str, sizeof(dur_str));
         snprintf(dur_lbl, sizeof(dur_lbl), "%s scan", dur_str);
-        dd_canvas_text_clipped(cv, (DDRect){x + 10.0, y + 8.0, w - 90.0, 20.0}, fname, 13.0, true, false, th->text);
-        dd_canvas_text_Right(cv, x + w - 10.0, y + 22.0, dur_lbl, 11.0, false, true, th->text_tertiary);
+        dd_canvas_text_clipped(cv, (DDRect){x + 10.0, y + 8.0, w - 90.0, 20.0}, fname, 12.5, true, false, th->text);
+        dd_canvas_text_Right(cv, x + w - 10.0, y + 21.0, dur_lbl, 10.5, false, true, th->text_tertiary);
 
         char full_p[512], trunc_p[96];
         dd_node_build_path(st->tree, st->current_folder, full_p, sizeof(full_p));
         dd_truncate_middle(full_p, 38, trunc_p, sizeof(trunc_p));
-        dd_canvas_text_clipped(cv, (DDRect){x + 10.0, y + 30.0, w - 20.0, 18.0}, trunc_p, 11.0, false, true, th->text_secondary);
+        dd_canvas_text_clipped(cv, (DDRect){x + 10.0, y + 28.0, w - 20.0, 18.0}, trunc_p, 10.5, false, true, th->text_secondary);
 
         double bw = (w - 26.0) * 0.5;
-        draw_outline_button(cv, th, (DDRect){x + 10.0, y + 54.0, bw, 28.0}, "Reveal", false, ACT_REVEAL_CURRENT, 0, 0, NULL);
+        draw_outline_button(cv, th, (DDRect){x + 10.0, y + 50.0, bw, 28.0}, "Reveal", false, ACT_REVEAL_CURRENT, 0, 0, NULL);
         const char *cp_lbl = (now < st->copy_confirm_until) ? "Copied ✓" : "Copy Path";
-        draw_outline_button(cv, th, (DDRect){x + 16.0 + bw, y + 54.0, bw, 28.0}, cp_lbl, now < st->copy_confirm_until, ACT_COPY_CURRENT_PATH, 0, 0, NULL);
-        y += 104.0;
+        draw_outline_button(cv, th, (DDRect){x + 16.0 + bw, y + 50.0, bw, 28.0}, cp_lbl, now < st->copy_confirm_until, ACT_COPY_CURRENT_PATH, 0, 0, NULL);
+        y += 100.0;
 
         char qw_hdr[64], qw_sz[32];
         dd_format_bytes(st->quick_wins.grand_total, qw_sz, sizeof(qw_sz));
-        snprintf(qw_hdr, sizeof(qw_hdr), "QUICK WINS (%s)", qw_sz);
+        snprintf(qw_hdr, sizeof(qw_hdr), "RECOMMENDED CLEANUP (%s)", qw_sz);
         draw_section_caption(cv, th, x, y + 10.0, qw_hdr);
         y += 18.0;
 
         if (st->quick_wins.group_count == 0) {
-            DDRect empty_qw = {x, y, w, 36.0};
-            dd_canvas_round_rect(cv, empty_qw, 8.0, th->card, th->border, 1.0);
-            dd_canvas_text_center(cv, empty_qw, "No junk or large media found in this folder", 11.5, false, false, th->text_secondary);
-            y += 44.0;
+            DDRect empty_qw = {x, y, w, 34.0};
+            dd_canvas_round_rect(cv, empty_qw, 4.0, th->card, th->border, 1.0);
+            dd_canvas_text_center(cv, empty_qw, "No disposable caches found in this folder", 11.0, false, false, th->text_secondary);
+            y += 42.0;
         } else {
             for (int i = 0; i < st->quick_wins.group_count; i++) {
                 const DDQuickWinGroup *g = &st->quick_wins.groups[i];
@@ -483,34 +489,34 @@ static void render_sidebar(DDAppState *st, DDCanvas *cv, DDRect sb) {
                         break;
                     }
                 }
-                DDRect gr = {x, y, w, 34.0};
-                dd_canvas_round_rect(cv, gr, 8.0, th->card, th->border, 1.0);
-                dd_canvas_draw_icon(cv, ICON_FOLDER, x + 8.0, y + 9.0, 15.0, th->ink);
+                DDRect gr = {x, y, w, 32.0};
+                dd_canvas_round_rect(cv, gr, 4.0, th->card, th->border, 1.0);
+                dd_canvas_draw_icon(cv, ICON_FOLDER, x + 8.0, y + 8.0, 14.0, th->text_secondary);
                 char g_title[96], g_sz[32];
                 snprintf(g_title, sizeof(g_title), "%s (%d)", g->title, g->item_count);
                 dd_format_bytes(g->total_size, g_sz, sizeof(g_sz));
-                dd_canvas_text_clipped(cv, (DDRect){x + 28.0, y, w - 120.0, 34.0}, g_title, 12.0, false, false, th->text);
-                dd_canvas_text_Right(cv, x + w - 34.0, y + 21.0, g_sz, 11.5, true, true, th->text_secondary);
+                dd_canvas_text_clipped(cv, (DDRect){x + 26.0, y, w - 116.0, 32.0}, g_title, 11.5, false, false, th->text);
+                dd_canvas_text_Right(cv, x + w - 32.0, y + 20.0, g_sz, 11.0, true, true, th->text_secondary);
 
-                dd_canvas_register_hit(cv, ACT_QUICK_WIN_CLICK, i, 0, NULL, g->title, (DDRect){x, y, w - 30.0, 34.0}, true);
+                dd_canvas_register_hit(cv, ACT_QUICK_WIN_CLICK, i, 0, NULL, g->title, (DDRect){x, y, w - 30.0, 32.0}, true);
 
-                DDRect stg_btn = {x + w - 28.0, y + 5.0, 24.0, 24.0};
-                dd_canvas_round_rect(cv, stg_btn, 6.0, all_staged ? th->ink : th->chip, th->control_border, 1.0);
-                dd_canvas_draw_icon(cv, all_staged ? ICON_CHECK : ICON_PLUS, stg_btn.x + 5.0, stg_btn.y + 5.0, 14.0, all_staged ? th->on_ink : th->text);
-                dd_canvas_register_hit(cv, ACT_QUICK_WIN_STAGE_ALL, i, 0, NULL, "Stage Quick Win Group", stg_btn, true);
-                y += 38.0;
+                DDRect stg_btn = {x + w - 26.0, y + 4.0, 22.0, 24.0};
+                dd_canvas_round_rect(cv, stg_btn, 3.0, all_staged ? th->ink : th->chip, th->control_border, 1.0);
+                dd_canvas_draw_icon(cv, all_staged ? ICON_CHECK : ICON_PLUS, stg_btn.x + 4.0, stg_btn.y + 5.0, 13.0, all_staged ? th->on_ink : th->text);
+                dd_canvas_register_hit(cv, ACT_QUICK_WIN_STAGE_ALL, i, 0, NULL, "Stage Recommended Group", stg_btn, true);
+                y += 36.0;
             }
             y += 6.0;
         }
 
-        draw_section_caption(cv, th, x, y + 10.0, "FILE TYPES");
+        draw_section_caption(cv, th, x, y + 10.0, "SPACE BY FILE TYPE");
         y += 18.0;
         int32_t root_fidx = st->tree->nodes[st->current_folder].folder_idx;
         if (root_fidx >= 0) {
             const DDFolderExtra *fe = &st->tree->folders[root_fidx];
             int64_t tot_sz = st->tree->nodes[st->current_folder].size_on_disk;
-            DDRect bar_r = {x, y, w, 12.0};
-            dd_canvas_round_rect(cv, bar_r, 6.0, th->track, th->border, 1.0);
+            DDRect bar_r = {x, y, w, 10.0};
+            dd_canvas_round_rect(cv, bar_r, 2.0, th->track, th->border, 1.0);
             if (tot_sz > 0) {
                 double bx = x;
                 for (int c = 0; c < CAT_COUNT; c++) {
@@ -724,7 +730,7 @@ static void render_viz_folders(DDAppState *st, DDCanvas *cv, DDRect area) {
 
             dd_canvas_text_clipped(cv, (DDRect){cr.x + 12.0, cr.y + 14.0, cr.w - 44.0, 22.0}, nm, 13.0, true, false, th->pastel_text_primary);
             DDRect sbtn = {cr.x + cr.w - 32.0, cr.y + 13.0, 22.0, 22.0};
-            dd_canvas_round_rect(cv, sbtn, 5.0, staged ? th->ink : dd_color_hex(0xFFFFFF, 0.45), dd_color_hex(0x0F172A, 0.25), 0.8);
+            dd_canvas_round_rect(cv, sbtn, 3.0, staged ? th->ink : dd_color_hex(0xFFFFFF, 0.45), dd_color_hex(0x0F172A, 0.25), 0.8);
             dd_canvas_draw_icon(cv, staged ? ICON_CHECK : ICON_PLUS, sbtn.x + 4.0, sbtn.y + 4.0, 14.0, staged ? th->on_ink : th->pastel_text_primary);
             dd_canvas_register_hit(cv, ACT_STAGE_NODE, cidx, 0, NULL, "Stage Folder", sbtn, true);
 
@@ -777,11 +783,11 @@ static void render_viz_folders(DDAppState *st, DDCanvas *cv, DDRect area) {
             bool sel = (st->selected_node == cidx);
             bool hov = (st->hovered_node == cidx);
             bool staged = is_node_staged(st, cidx);
-            dd_canvas_round_rect(cv, tr, 8.0, th->card, (sel || hov) ? th->ink : th->border, (sel || hov) ? 2.0 : 1.0);
+            dd_canvas_round_rect(cv, tr, 4.0, th->card, (sel || hov) ? th->ink : th->border, (sel || hov) ? 1.5 : 1.0);
             dd_canvas_add_viz_rect(cv, cidx, (DDRect){tr.x, tr.y, tr.w - 34.0, tr.h});
 
             DDRect ibox = {tr.x + 10.0, tr.y + 13.0, 36.0, 36.0};
-            dd_canvas_round_rect(cv, ibox, 8.0, th->categories[cn->category], dd_color_hex(0x0F172A, 0.2), 1.0);
+            dd_canvas_round_rect(cv, ibox, 4.0, th->categories[cn->category], dd_color_hex(0x0F172A, 0.2), 1.0);
             dd_canvas_draw_icon(cv, category_icon((DDFileCategory)cn->category, false), ibox.x + 10.0, ibox.y + 10.0, 16.0, th->pastel_text_primary);
 
             char sz_s[32], age_s[48], meta_s[96];
@@ -794,7 +800,7 @@ static void render_viz_folders(DDAppState *st, DDCanvas *cv, DDRect area) {
             dd_canvas_text_Right(cv, tr.x + tr.w - 36.0, tr.y + 36.0, sz_s, 12.0, true, true, th->text);
 
             DDRect sbtn = {tr.x + tr.w - 30.0, tr.y + 19.0, 22.0, 22.0};
-            dd_canvas_round_rect(cv, sbtn, 5.0, staged ? th->ink : th->chip, th->control_border, 0.8);
+            dd_canvas_round_rect(cv, sbtn, 3.0, staged ? th->ink : th->chip, th->control_border, 0.8);
             dd_canvas_draw_icon(cv, staged ? ICON_CHECK : ICON_PLUS, sbtn.x + 4.0, sbtn.y + 4.0, 14.0, staged ? th->on_ink : th->text);
             dd_canvas_register_hit(cv, ACT_STAGE_NODE, cidx, 0, NULL, "Stage File", sbtn, true);
         }
@@ -957,7 +963,7 @@ static void render_viz_flame(DDAppState *st, DDCanvas *cv, DDRect area) {
     if (row_h < 22.0) row_h = 22.0;
 
     DDRect root_bar = {x0, area.y + 10.0, w0, 30.0};
-    dd_canvas_round_rect(cv, root_bar, 6.0, th->ink, th->control_border, 1.0);
+    dd_canvas_round_rect(cv, root_bar, 4.0, th->ink, th->control_border, 1.0);
     char rlbl[256];
     if (st->current_folder > 0) {
         snprintf(rlbl, sizeof(rlbl), "↑ %s  (click to navigate up)", dd_node_name(st->tree, st->current_folder));
@@ -1115,7 +1121,7 @@ static void render_viz_mindmap(DDAppState *st, DDCanvas *cv, DDRect area) {
         dd_format_bytes(cn->size_on_disk, sz_s, sizeof(sz_s));
         snprintf(lbl, sizeof(lbl), "%s (%s)", nm, sz_s);
         DDRect lbox = {col1_x + rad + 8.0, cy - 11.0, 170.0, 22.0};
-        dd_canvas_round_rect(cv, lbox, 6.0, th->card, th->border, 1.0);
+        dd_canvas_round_rect(cv, lbox, 4.0, th->card, th->border, 1.0);
         dd_canvas_text_clipped(cv, (DDRect){lbox.x + 6.0, lbox.y, lbox.w - 12.0, lbox.h}, lbl, 11.0, true, false, th->text);
         dd_canvas_add_viz_rect(cv, cidx, lbox);
     }
@@ -1188,7 +1194,7 @@ static void render_viz_topsizes(DDAppState *st, DDCanvas *cv, DDRect area) {
         if (row.y + row.h >= list_area.y && row.y <= list_area.y + list_area.h) {
             bool sel = (st->selected_node == nidx || st->hovered_node == nidx);
             bool staged = is_node_staged(st, nidx);
-            dd_canvas_round_rect(cv, row, 8.0, th->card, sel ? th->ink : th->border, sel ? 1.8 : 1.0);
+            dd_canvas_round_rect(cv, row, 4.0, th->card, sel ? th->ink : th->border, sel ? 1.5 : 1.0);
             dd_canvas_add_viz_rect(cv, nidx, (DDRect){x0, y, w0 - 40.0, 38.0});
 
             char rstr[16];
@@ -1203,7 +1209,7 @@ static void render_viz_topsizes(DDAppState *st, DDCanvas *cv, DDRect area) {
             if (bar_max_w < 80.0) bar_max_w = 80.0;
             double fill_w = ((double)n->size_on_disk / (double)max_sz) * bar_max_w;
             if (fill_w < 6.0) fill_w = 6.0;
-            dd_canvas_round_rect(cv, (DDRect){bar_x, y + 6.0, fill_w, 26.0}, 6.0, th->categories[cat], dd_color_hex(0x0F172A, 0.18), 0.8);
+            dd_canvas_round_rect(cv, (DDRect){bar_x, y + 6.0, fill_w, 26.0}, 2.0, th->categories[cat], dd_color_hex(0x0F172A, 0.18), 0.8);
 
             char label_buf[256];
             if (st->top_scope != SCOPE_THIS_FOLDER && n->parent_idx >= 0) {
@@ -1229,7 +1235,7 @@ static void render_viz_topsizes(DDAppState *st, DDCanvas *cv, DDRect area) {
             dd_canvas_text_Right(cv, x0 + w0 - 42.0, y + 24.0, sz_s, 12.0, true, true, th->text);
 
             DDRect sbtn = {x0 + w0 - 32.0, y + 7.0, 24.0, 24.0};
-            dd_canvas_round_rect(cv, sbtn, 6.0, staged ? th->ink : th->chip, th->control_border, 1.0);
+            dd_canvas_round_rect(cv, sbtn, 3.0, staged ? th->ink : th->chip, th->control_border, 1.0);
             dd_canvas_draw_icon(cv, staged ? ICON_CHECK : ICON_PLUS, sbtn.x + 5.0, sbtn.y + 5.0, 14.0, staged ? th->on_ink : th->text);
             dd_canvas_register_hit(cv, ACT_STAGE_NODE, nidx, 0, NULL, "Stage Item", sbtn, true);
         }
@@ -1266,7 +1272,7 @@ static void render_viz_agemap(DDAppState *st, DDCanvas *cv, DDRect area) {
     double bw = (w0 - 50.0) / 6.0;
     for (int b = 0; b < 6; b++) {
         DDRect bc = {x0 + b * (bw + 10.0), y, bw, 74.0};
-        dd_canvas_round_rect(cv, bc, 8.0, th->card, th->border, 1.0);
+        dd_canvas_round_rect(cv, bc, 4.0, th->card, th->border, 1.0);
         dd_canvas_fill_rect(cv, (DDRect){bc.x + 8.0, bc.y + 8.0, (bc.w - 16.0) * ((double)rep->bucket_bytes[b] / (double)max_b), 8.0}, th->age_buckets[b]);
         dd_canvas_text_clipped(cv, (DDRect){bc.x + 8.0, bc.y + 22.0, bc.w - 16.0, 18.0}, b_names[b], 11.0, false, false, th->text_secondary);
         char bsz[32];
@@ -1301,7 +1307,7 @@ static void render_viz_agemap(DDAppState *st, DDCanvas *cv, DDRect area) {
         for (int m = 0; m < 12; m++) {
             double intensity = (double)rep->heatmap[yr][m] / (double)hm_max;
             DDColor c = (intensity <= 0.0) ? th->track : dd_color_hex(0xFF6B4A, 0.22 + 0.78 * sqrt(intensity));
-            dd_canvas_round_rect(cv, (DDRect){x0 + 50.0 + m * cell_w, y + 2.0, cell_w - 4.0, 18.0}, 4.0, c, th->border, 0.6);
+            dd_canvas_round_rect(cv, (DDRect){x0 + 50.0 + m * cell_w, y + 2.0, cell_w - 4.0, 18.0}, 2.0, c, th->border, 0.6);
         }
         y += 22.0;
     }
@@ -1317,7 +1323,7 @@ static void render_viz_agemap(DDAppState *st, DDCanvas *cv, DDRect area) {
 
     if (rep->big_untouched_count == 0) {
         DDRect emp = {x0, y, w0, 44.0};
-        dd_canvas_round_rect(cv, emp, 8.0, th->card, th->border, 1.0);
+        dd_canvas_round_rect(cv, emp, 4.0, th->card, th->border, 1.0);
         dd_canvas_text_center(cv, emp, "No files >= 40 MB older than 1 year in this folder.", 12.0, false, false, th->text_secondary);
         y += 50.0;
     } else {
@@ -1334,14 +1340,14 @@ static void render_viz_agemap(DDAppState *st, DDCanvas *cv, DDRect area) {
                 dd_format_relative_age(n->modified_stamp, age_s, sizeof(age_s));
                 bool staged = is_node_staged(st, nidx);
 
-                dd_canvas_round_rect(cv, r, 8.0, th->card, th->border, 1.0);
+                dd_canvas_round_rect(cv, r, 4.0, th->card, th->border, 1.0);
                 dd_canvas_add_viz_rect(cv, nidx, (DDRect){x0, y, w0 - 44.0, 36.0});
                 dd_canvas_text_clipped(cv, (DDRect){x0 + 12.0, y, w0 - 210.0, 36.0}, nm, 12.0, true, false, th->text);
                 dd_canvas_text_Right(cv, x0 + w0 - 118.0, y + 23.0, age_s, 11.0, false, false, th->text_secondary);
                 dd_canvas_text_Right(cv, x0 + w0 - 46.0, y + 23.0, sz_s, 12.0, true, true, th->text);
 
                 DDRect sbtn = {x0 + w0 - 34.0, y + 5.0, 26.0, 26.0};
-                dd_canvas_round_rect(cv, sbtn, 6.0, staged ? th->ink : th->chip, th->control_border, 1.0);
+                dd_canvas_round_rect(cv, sbtn, 3.0, staged ? th->ink : th->chip, th->control_border, 1.0);
                 dd_canvas_draw_icon(cv, staged ? ICON_CHECK : ICON_PLUS, sbtn.x + 6.0, sbtn.y + 6.0, 14.0, staged ? th->on_ink : th->text);
                 dd_canvas_register_hit(cv, ACT_STAGE_NODE, nidx, 1, NULL, "Toggle Stage Untouched File", sbtn, true);
             }
@@ -1404,7 +1410,7 @@ static void draw_list_outline(DDAppState *st, DDCanvas *cv, DDRect area, double 
         if (row.y + row.h >= area.y && row.y <= area.y + area.h) {
             bool sel = (st->selected_node == cidx || st->hovered_node == cidx);
             bool staged = is_node_staged(st, cidx);
-            dd_canvas_round_rect(cv, row, 6.0, sel ? th->chip : th->card, sel ? th->ink : th->border, sel ? 1.5 : 0.8);
+            dd_canvas_round_rect(cv, row, 4.0, sel ? th->chip : th->card, sel ? th->ink : th->border, sel ? 1.5 : 0.8);
             dd_canvas_add_viz_rect(cv, cidx, (DDRect){x0, y, w0 - 38.0, 32.0});
 
             double indent = x0 + 10.0 + depth * 20.0;
@@ -1428,9 +1434,9 @@ static void draw_list_outline(DDAppState *st, DDCanvas *cv, DDRect area, double 
             double share = (double)cn->size_on_disk / (double)psize;
             if (share > 1.0) share = 1.0;
             DDRect mbar = {x0 + w0 - 198.0, y + 11.0, 56.0, 10.0};
-            dd_canvas_round_rect(cv, mbar, 5.0, th->track, th->border, 0.5);
+            dd_canvas_round_rect(cv, mbar, 2.0, th->track, th->border, 0.5);
             if (share > 0.01) {
-                dd_canvas_round_rect(cv, (DDRect){mbar.x, mbar.y, mbar.w * share, mbar.h}, 5.0, th->ink, dd_color_hex(0,0), 0);
+                dd_canvas_round_rect(cv, (DDRect){mbar.x, mbar.y, mbar.w * share, mbar.h}, 2.0, th->ink, dd_color_hex(0,0), 0);
             }
 
             char pct_s[24], sz_s[32];
@@ -1440,7 +1446,7 @@ static void draw_list_outline(DDAppState *st, DDCanvas *cv, DDRect area, double 
             dd_canvas_text_Right(cv, x0 + w0 - 40.0, y + 21.0, sz_s, 12.0, true, true, th->text);
 
             DDRect sbtn = {x0 + w0 - 30.0, y + 5.0, 22.0, 22.0};
-            dd_canvas_round_rect(cv, sbtn, 5.0, staged ? th->ink : th->chip, th->control_border, 0.8);
+            dd_canvas_round_rect(cv, sbtn, 3.0, staged ? th->ink : th->chip, th->control_border, 0.8);
             dd_canvas_draw_icon(cv, staged ? ICON_CHECK : ICON_PLUS, sbtn.x + 4.0, sbtn.y + 4.0, 14.0, staged ? th->on_ink : th->text);
             dd_canvas_register_hit(cv, ACT_STAGE_NODE, cidx, 0, NULL, "Stage Item", sbtn, true);
         }
@@ -1507,15 +1513,15 @@ static void render_explore_tab(DDAppState *st, DDCanvas *cv, DDRect main_r) {
     if (!st->tree || st->tree->node_count == 0) {
         double cx = main_r.x + main_r.w * 0.5;
         double cy = main_r.y + 140.0;
-        dd_canvas_draw_icon(cv, ICON_FOLDER, cx - 24.0, cy - 72.0, 48.0, th->ink);
-        dd_canvas_text_center(cv, (DDRect){cx - 240.0, cy - 12.0, 480.0, 32.0}, "Map every byte on your system", 21.0, true, false, th->text);
-        dd_canvas_text_center(cv, (DDRect){cx - 240.0, cy + 22.0, 480.0, 22.0}, "Choose your Home folder or any directory to explore 9 interactive views.", 13.0, false, false, th->text_secondary);
-        draw_ink_button(cv, th, (DDRect){cx - 148.0, cy + 62.0, 140.0, 38.0}, "Scan Home", ACT_SCAN_HOME, 0, 0, NULL);
-        draw_outline_button(cv, th, (DDRect){cx + 8.0, cy + 62.0, 140.0, 38.0}, "Choose Folder...", false, ACT_SCAN_PICK, 0, 0, NULL);
+        dd_canvas_draw_icon(cv, ICON_FOLDER, cx - 20.0, cy - 68.0, 40.0, th->text_secondary);
+        dd_canvas_text_center(cv, (DDRect){cx - 240.0, cy - 12.0, 480.0, 32.0}, "Map every byte on your system", 20.0, true, false, th->text);
+        dd_canvas_text_center(cv, (DDRect){cx - 240.0, cy + 22.0, 480.0, 22.0}, "Choose your Home folder or any directory to explore 9 interactive views.", 12.5, false, false, th->text_secondary);
+        draw_ink_button(cv, th, (DDRect){cx - 148.0, cy + 62.0, 140.0, 36.0}, "Scan Home", ACT_SCAN_HOME, 0, 0, NULL);
+        draw_outline_button(cv, th, (DDRect){cx + 8.0, cy + 62.0, 140.0, 36.0}, "Choose Folder...", false, ACT_SCAN_PICK, 0, 0, NULL);
 
         if (st->monitor.volume_count > 0) {
             double vy = cy + 130.0;
-            dd_canvas_text_center(cv, (DDRect){cx - 200.0, vy, 400.0, 20.0}, "OR SELECT A DETECTED DRIVE", 11.0, true, false, th->text_tertiary);
+            dd_canvas_text_center(cv, (DDRect){cx - 200.0, vy, 400.0, 20.0}, "OR SELECT A DETECTED DRIVE", 10.5, true, false, th->text_tertiary);
             vy += 26.0;
 
             int n_vol = (st->monitor.volume_count < 6) ? st->monitor.volume_count : 6;
@@ -1535,17 +1541,17 @@ static void render_explore_tab(DDAppState *st, DDCanvas *cv, DDRect main_r) {
                 DDRect card_r = {start_x + c * (card_w + gap), vy + r * (card_h + gap), card_w, card_h};
                 const DDVolumeInfo *v = &st->monitor.volumes[i];
 
-                dd_canvas_round_rect(cv, card_r, 8.0, th->card, th->border, 1.0);
-                dd_canvas_draw_icon(cv, ICON_TRAY, card_r.x + 12.0, card_r.y + 12.0, 18.0, th->ink);
+                dd_canvas_round_rect(cv, card_r, 4.0, th->card, th->border, 1.0);
+                dd_canvas_draw_icon(cv, ICON_TRAY, card_r.x + 12.0, card_r.y + 12.0, 16.0, th->text_secondary);
 
-                dd_canvas_text_clipped(cv, (DDRect){card_r.x + 36.0, card_r.y + 10.0, card_r.w - 44.0, 18.0}, v->name, 13.0, true, false, th->text);
+                dd_canvas_text_clipped(cv, (DDRect){card_r.x + 36.0, card_r.y + 10.0, card_r.w - 44.0, 18.0}, v->name, 12.5, true, false, th->text);
                 dd_canvas_text_clipped(cv, (DDRect){card_r.x + 36.0, card_r.y + 28.0, card_r.w - 44.0, 14.0}, v->mount_path, 10.5, false, true, th->text_secondary);
 
                 double ratio = (v->total_bytes > 0) ? ((double)v->used_bytes / (double)v->total_bytes) : 0.0;
                 DDRect bar_track = {card_r.x + 12.0, card_r.y + 48.0, card_r.w - 24.0, 6.0};
-                dd_canvas_round_rect(cv, bar_track, 3.0, th->track, (DDColor){0,0,0,0}, 0.0);
+                dd_canvas_round_rect(cv, bar_track, 2.0, th->track, (DDColor){0,0,0,0}, 0.0);
                 DDRect bar_fill = {card_r.x + 12.0, card_r.y + 48.0, bar_track.w * ratio, 6.0};
-                dd_canvas_round_rect(cv, bar_fill, 3.0, (ratio > 0.9) ? th->used : th->ink, (DDColor){0,0,0,0}, 0.0);
+                dd_canvas_round_rect(cv, bar_fill, 2.0, (ratio > 0.9) ? th->used : th->ink, (DDColor){0,0,0,0}, 0.0);
 
                 char f_buf[32], t_buf[32], stat_lbl[80];
                 dd_format_bytes(v->free_bytes, f_buf, sizeof(f_buf));
@@ -1564,18 +1570,18 @@ static void render_explore_tab(DDAppState *st, DDCanvas *cv, DDRect main_r) {
     double w = main_r.w - 32.0;
 
     if (st->tree->denied_count > 0 && !st->denied_banner_dismissed) {
-        DDRect ban = {x, y, w, 38.0};
-        dd_canvas_round_rect(cv, ban, 8.0, th->chip, th->control_border, 1.0);
-        dd_canvas_draw_icon(cv, ICON_LOCK, x + 12.0, y + 11.0, 16.0, th->ink);
+        DDRect ban = {x, y, w, 36.0};
+        dd_canvas_round_rect(cv, ban, 4.0, th->chip, th->control_border, 1.0);
+        dd_canvas_draw_icon(cv, ICON_LOCK, x + 10.0, y + 10.0, 16.0, th->used_text);
         char msg[256];
         snprintf(msg, sizeof(msg), "%d folder%s couldn't be read: sizes may be incomplete (e.g. %s)",
                  (int)st->tree->denied_count, st->tree->denied_count == 1 ? "" : "s",
                  st->tree->denied_sample_count > 0 ? st->tree->denied_samples[0] : "restricted directory");
-        dd_canvas_text_clipped(cv, (DDRect){x + 34.0, y, w - 284.0, 38.0}, msg, 11.5, false, false, th->text);
-        draw_outline_button(cv, th, (DDRect){x + w - 244.0, y + 5.0, 72.0, 28.0}, "Rescan", false, ACT_RESCAN_CURRENT, 0, 0, NULL);
-        draw_outline_button(cv, th, (DDRect){x + w - 166.0, y + 5.0, 128.0, 28.0}, "Permissions Help", false, ACT_OPEN_PERMS_HELP, 0, 0, NULL);
-        draw_square_icon_button(cv, th, (DDRect){x + w - 32.0, y + 5.0, 28.0, 28.0}, ICON_CLOSE, false, "Dismiss Notice", ACT_DISMISS_DENIED, 0);
-        y += 46.0;
+        dd_canvas_text_clipped(cv, (DDRect){x + 32.0, y, w - 280.0, 36.0}, msg, 11.5, false, false, th->text);
+        draw_outline_button(cv, th, (DDRect){x + w - 240.0, y + 4.0, 72.0, 28.0}, "Rescan", false, ACT_RESCAN_CURRENT, 0, 0, NULL);
+        draw_outline_button(cv, th, (DDRect){x + w - 164.0, y + 4.0, 126.0, 28.0}, "Permissions Help", false, ACT_OPEN_PERMS_HELP, 0, 0, NULL);
+        draw_square_icon_button(cv, th, (DDRect){x + w - 32.0, y + 4.0, 28.0, 28.0}, ICON_CLOSE, false, "Dismiss Notice", ACT_DISMISS_DENIED, 0);
+        y += 44.0;
     }
 
     const DDFileNode *cur_n = &st->tree->nodes[st->current_folder];
@@ -1586,12 +1592,12 @@ static void render_explore_tab(DDAppState *st, DDCanvas *cv, DDRect main_r) {
     snprintf(hdr_meta, sizeof(hdr_meta), "%s  ·  %d files  ·  %d folders",
              sz_str, cur_fe ? (int)cur_fe->file_count : 0, cur_fe ? (int)cur_fe->folder_count : 0);
 
-    dd_canvas_text_clipped(cv, (DDRect){x, y, w * 0.45, 28.0}, fname, 19.0, true, false, th->text);
-    double fn_w = dd_canvas_measure_text(cv, fname, 19.0, true, false);
+    dd_canvas_text_clipped(cv, (DDRect){x, y, w * 0.45, 28.0}, fname, 18.0, true, false, th->text);
+    double fn_w = dd_canvas_measure_text(cv, fname, 18.0, true, false);
     if (fn_w > w * 0.45) fn_w = w * 0.45;
-    dd_canvas_text_clipped(cv, (DDRect){x + fn_w + 14.0, y + 2.0, w - fn_w - 56.0, 26.0}, hdr_meta, 13.0, false, true, th->text_secondary);
-    draw_square_icon_button(cv, th, (DDRect){x + w - 32.0, y, 30.0, 30.0}, ICON_REVEAL, false, "Reveal in File Manager", ACT_REVEAL_CURRENT, 0);
-    y += 38.0;
+    dd_canvas_text_clipped(cv, (DDRect){x + fn_w + 14.0, y + 2.0, w - fn_w - 56.0, 26.0}, hdr_meta, 12.0, false, true, th->text_secondary);
+    draw_square_icon_button(cv, th, (DDRect){x + w - 30.0, y, 30.0, 30.0}, ICON_REVEAL, false, "Reveal in File Manager", ACT_REVEAL_CURRENT, 0);
+    y += 36.0;
 
     static const char * const mode_names[9] = {
         "Treemap", "Folders", "Sunburst", "Flame", "Bubbles", "Mind Map", "Top Sizes", "Age Map", "List"
@@ -1611,10 +1617,13 @@ static void render_explore_tab(DDAppState *st, DDCanvas *cv, DDRect main_r) {
     double mx = x;
     for (int m = 0; m < 9; m++) {
         bool act = ((int)st->viz_mode == m);
-        double mw = dd_canvas_measure_text(cv, mode_names[m], 11.5, act, false) + 18.0;
+        double mw = dd_canvas_measure_text(cv, mode_names[m], 11.5, act, false) + 16.0;
         DDRect mr = {mx, y, mw, 28.0};
-        dd_canvas_round_rect(cv, mr, 14.0, act ? th->ink : th->chip, act ? th->control_border : th->border, 1.0);
-        dd_canvas_text_center(cv, mr, mode_names[m], 11.5, act, false, act ? th->on_ink : th->text);
+        dd_canvas_round_rect(cv, mr, 4.0, act ? th->card : th->chip, act ? th->control_border : th->border, 1.0);
+        if (act) {
+            dd_canvas_fill_rect(cv, (DDRect){mr.x + 4.0, mr.y + mr.h - 2.0, mr.w - 8.0, 2.0}, th->ink);
+        }
+        dd_canvas_text_center(cv, mr, mode_names[m], 11.5, act, false, act ? th->text : th->text_secondary);
         dd_canvas_register_hit(cv, ACT_VIZ_MODE, m, 0, NULL, mode_names[m], mr, true);
         mx += mw + 4.0;
     }
@@ -1624,7 +1633,7 @@ static void render_explore_tab(DDAppState *st, DDCanvas *cv, DDRect main_r) {
                            st->viz_mode == VIZ_FLAME || st->viz_mode == VIZ_BUBBLES || st->viz_mode == VIZ_MINDMAP);
     bool has_depth = (st->viz_mode == VIZ_TREEMAP || st->viz_mode == VIZ_SUNBURST || st->viz_mode == VIZ_FLAME);
 
-    dd_canvas_text_clipped(cv, (DDRect){x, y, w * 0.42, 26.0}, mode_captions[st->viz_mode], 12.0, false, false, th->text_secondary);
+    dd_canvas_text_clipped(cv, (DDRect){x, y, w * 0.42, 26.0}, mode_captions[st->viz_mode], 11.5, false, false, th->text_secondary);
 
     double ctrl_x = x + w;
     if (has_color_mode) {
@@ -1636,7 +1645,7 @@ static void render_explore_tab(DDAppState *st, DDCanvas *cv, DDRect main_r) {
         char d_lbl[32];
         snprintf(d_lbl, sizeof(d_lbl), "Depth %d", st->depth_limit);
         draw_outline_button(cv, th, (DDRect){ctrl_x - 26.0, y, 26.0, 26.0}, "+", false, ACT_DEPTH_INC, 0, 0, NULL);
-        dd_canvas_text_center(cv, (DDRect){ctrl_x - 90.0, y, 62.0, 26.0}, d_lbl, 11.5, true, true, th->text);
+        dd_canvas_text_center(cv, (DDRect){ctrl_x - 90.0, y, 62.0, 26.0}, d_lbl, 11.0, true, true, th->text);
         draw_outline_button(cv, th, (DDRect){ctrl_x - 118.0, y, 26.0, 26.0}, "-", false, ACT_DEPTH_DEC, 0, 0, NULL);
         ctrl_x -= 128.0;
     }
@@ -1674,15 +1683,15 @@ static void render_explore_tab(DDAppState *st, DDCanvas *cv, DDRect main_r) {
         int n_leg = (st->color_mode == COLOR_BY_TYPE) ? CAT_COUNT : 6;
         double leg_w = (st->color_mode == COLOR_BY_TYPE) ? 550.0 : 340.0;
         if (leg_w < viz_area.w - 24.0) {
-            DDRect lr = {viz_area.x + viz_area.w - leg_w - 12.0, viz_area.y + viz_area.h - 34.0, leg_w, 26.0};
-            dd_canvas_round_rect(cv, lr, 13.0, th->card, th->border, 1.0);
+            DDRect lr = {viz_area.x + viz_area.w - leg_w - 12.0, viz_area.y + viz_area.h - 34.0, leg_w, 24.0};
+            dd_canvas_round_rect(cv, lr, 4.0, th->card, th->border, 1.0);
             double lx = lr.x + 12.0;
             double step = (lr.w - 16.0) / (double)n_leg;
             for (int g = 0; g < n_leg; g++) {
                 DDColor gc = (st->color_mode == COLOR_BY_TYPE) ? th->categories[g] : th->age_buckets[g];
                 const char *gn = (st->color_mode == COLOR_BY_TYPE) ? dd_category_name((DDFileCategory)g) : age_names[g];
-                dd_canvas_circle(cv, lx + 4.0, lr.y + 13.0, 4.5, gc, th->border, 0.5);
-                dd_canvas_text(cv, lx + 12.0, lr.y + 17.0, gn, 10.0, false, false, th->text_secondary);
+                dd_canvas_circle(cv, lx + 4.0, lr.y + 12.0, 4.0, gc, th->border, 0.5);
+                dd_canvas_text(cv, lx + 12.0, lr.y + 16.0, gn, 10.0, false, false, th->text_secondary);
                 lx += step;
             }
         }
@@ -1701,13 +1710,13 @@ static void render_explore_tab(DDAppState *st, DDCanvas *cv, DDRect main_r) {
         } else {
             snprintf(hchip, sizeof(hchip), "%s  ·  %s (%s of scan)", hname, hsz, hpct);
         }
-        double cw = dd_canvas_measure_text(cv, hchip, 11.5, true, false) + 38.0;
+        double cw = dd_canvas_measure_text(cv, hchip, 11.5, true, false) + 36.0;
         if (cw > viz_area.w - 32.0) cw = viz_area.w - 32.0;
-        DDRect chip_r = {viz_area.x + 14.0, viz_area.y + viz_area.h - 40.0, cw, 30.0};
-        dd_canvas_round_rect(cv, chip_r, 15.0, th->card, th->control_border, 1.2);
+        DDRect chip_r = {viz_area.x + 14.0, viz_area.y + viz_area.h - 38.0, cw, 28.0};
+        dd_canvas_round_rect(cv, chip_r, 4.0, th->card, th->control_border, 1.0);
         dd_canvas_draw_icon(cv, category_icon(dd_node_dominant_category(st->tree, st->hovered_node), hn->is_directory),
-                            chip_r.x + 10.0, chip_r.y + 7.0, 15.0, th->ink);
-        dd_canvas_text_clipped(cv, (DDRect){chip_r.x + 30.0, chip_r.y, chip_r.w - 38.0, chip_r.h}, hchip, 11.5, true, false, th->text);
+                            chip_r.x + 8.0, chip_r.y + 6.0, 15.0, th->text_secondary);
+        dd_canvas_text_clipped(cv, (DDRect){chip_r.x + 28.0, chip_r.y, chip_r.w - 34.0, chip_r.h}, hchip, 11.0, true, false, th->text);
     }
 }
 
@@ -1740,21 +1749,21 @@ static void render_inspector(DDAppState *st, DDCanvas *cv, DDRect ins) {
     double w = ins.w - 32.0;
     double y = ins.y + 16.0 - st->scroll_y_inspector;
 
-    DDRect ibox = {x, y, 42.0, 42.0};
-    dd_canvas_round_rect(cv, ibox, 10.0, th->categories[cat], dd_color_hex(0x0F172A, 0.25), 1.0);
-    dd_canvas_draw_icon(cv, category_icon(cat, n->is_directory), ibox.x + 11.0, ibox.y + 11.0, 20.0, th->pastel_text_primary);
+    DDRect ibox = {x, y, 38.0, 38.0};
+    dd_canvas_round_rect(cv, ibox, 4.0, th->categories[cat], th->border, 1.0);
+    dd_canvas_draw_icon(cv, category_icon(cat, n->is_directory), ibox.x + 10.0, ibox.y + 10.0, 18.0, th->pastel_text_primary);
 
-    dd_canvas_text_clipped(cv, (DDRect){x + 52.0, y + 2.0, w - 52.0, 22.0}, name, 14.5, true, false, th->text);
-    dd_canvas_text(cv, x + 52.0, y + 36.0, n->is_directory ? "Folder" : dd_category_name(cat), 12.0, false, false, th->text_secondary);
-    y += 52.0;
+    dd_canvas_text_clipped(cv, (DDRect){x + 48.0, y + 1.0, w - 48.0, 20.0}, name, 13.5, true, false, th->text);
+    dd_canvas_text(cv, x + 48.0, y + 32.0, n->is_directory ? "Folder" : dd_category_name(cat), 11.5, false, false, th->text_secondary);
+    y += 48.0;
 
     char full_p[512], trunc_p[96];
     dd_node_build_path(st->tree, target, full_p, sizeof(full_p));
     dd_truncate_middle(full_p, 42, trunc_p, sizeof(trunc_p));
-    DDRect pbox = {x, y, w, 28.0};
-    dd_canvas_round_rect(cv, pbox, 6.0, th->card, th->border, 1.0);
-    dd_canvas_text_clipped(cv, (DDRect){x + 8.0, y, w - 16.0, 28.0}, trunc_p, 11.0, false, true, th->text_secondary);
-    y += 38.0;
+    DDRect pbox = {x, y, w, 26.0};
+    dd_canvas_round_rect(cv, pbox, 4.0, th->card, th->border, 1.0);
+    dd_canvas_text_clipped(cv, (DDRect){x + 8.0, y, w - 16.0, 26.0}, trunc_p, 10.5, false, true, th->text_secondary);
+    y += 34.0;
 
     char sz_s[32], pct_s[32], scan_sub[64];
     dd_format_bytes(n->size_on_disk, sz_s, sizeof(sz_s));
@@ -1762,29 +1771,29 @@ static void render_inspector(DDAppState *st, DDCanvas *cv, DDRect ins) {
     dd_format_percent((double)n->size_on_disk / (double)rtot, pct_s, sizeof(pct_s));
     snprintf(scan_sub, sizeof(scan_sub), "%s of scan", pct_s);
 
-    dd_canvas_text(cv, x, y + 22.0, sz_s, 22.0, true, true, th->text);
-    dd_canvas_text_Right(cv, x + w, y + 20.0, scan_sub, 12.5, true, false, th->ink);
-    y += 34.0;
+    dd_canvas_text(cv, x, y + 20.0, sz_s, 20.0, true, true, th->text);
+    dd_canvas_text_Right(cv, x + w, y + 18.0, scan_sub, 12.0, true, false, th->ink);
+    y += 32.0;
 
     bool staged = dd_queue_contains_path(&st->cleanup_queue, full_p);
-    const char *stg_lbl = staged ? "✓ Staged for Cleanup" : "Add to Cleanup";
-    draw_outline_button(cv, th, (DDRect){x, y, w, 36.0}, stg_lbl, !staged, ACT_INSPECTOR_STAGE, target, 0, NULL);
-    y += 44.0;
+    const char *stg_lbl = staged ? "✓ In Staging Area" : "Stage for Cleanup";
+    draw_outline_button(cv, th, (DDRect){x, y, w, 32.0}, stg_lbl, !staged, ACT_INSPECTOR_STAGE, target, 0, NULL);
+    y += 38.0;
 
-    double bw = (w - 8.0) * 0.5;
-    draw_outline_button(cv, th, (DDRect){x, y, bw, 30.0}, "Reveal", false, ACT_INSPECTOR_REVEAL, target, 0, NULL);
-    draw_outline_button(cv, th, (DDRect){x + bw + 8.0, y, bw, 30.0}, "Quick Look", false, ACT_INSPECTOR_QUICKLOOK, target, 0, NULL);
-    y += 36.0;
+    double bw = (w - 6.0) * 0.5;
+    draw_outline_button(cv, th, (DDRect){x, y, bw, 28.0}, "Reveal", false, ACT_INSPECTOR_REVEAL, target, 0, NULL);
+    draw_outline_button(cv, th, (DDRect){x + bw + 6.0, y, bw, 28.0}, "Quick Look", false, ACT_INSPECTOR_QUICKLOOK, target, 0, NULL);
+    y += 32.0;
     const char *cp_lbl = (dd_now_seconds() < st->inspector_copy_until) ? "Copied ✓" : "Copy Path";
     const char *foc_lbl = (target == st->current_folder && n->parent_idx >= 0) ? "Parent Folder" : (n->is_directory ? "Open Folder" : "Focus Parent");
-    draw_outline_button(cv, th, (DDRect){x, y, bw, 30.0}, foc_lbl, false, ACT_INSPECTOR_FOCUS, target, 0, NULL);
-    draw_outline_button(cv, th, (DDRect){x + bw + 8.0, y, bw, 30.0}, cp_lbl, dd_now_seconds() < st->inspector_copy_until, ACT_INSPECTOR_COPY, target, 0, NULL);
-    y += 42.0;
+    draw_outline_button(cv, th, (DDRect){x, y, bw, 28.0}, foc_lbl, false, ACT_INSPECTOR_FOCUS, target, 0, NULL);
+    draw_outline_button(cv, th, (DDRect){x + bw + 6.0, y, bw, 28.0}, cp_lbl, dd_now_seconds() < st->inspector_copy_until, ACT_INSPECTOR_COPY, target, 0, NULL);
+    y += 38.0;
 
-    draw_section_caption(cv, th, x, y + 10.0, "DETAILS");
+    draw_section_caption(cv, th, x, y + 10.0, "ITEM DETAILS");
     y += 18.0;
-    DDRect dcard = {x, y, w, 162.0};
-    dd_canvas_round_rect(cv, dcard, 10.0, th->card, th->border, 1.0);
+    DDRect dcard = {x, y, w, 156.0};
+    dd_canvas_round_rect(cv, dcard, 4.0, th->card, th->border, 1.0);
 
     char log_s[32], sav_s[32], par_s[24], mod_s[48], crt_s[48], cnt_s[64];
     dd_format_bytes(n->logical_size, log_s, sizeof(log_s));
@@ -1809,14 +1818,14 @@ static void render_inspector(DDAppState *st, DDCanvas *cv, DDRect ins) {
         {"Created", crt_s, false}
     };
     for (int r = 0; r < 7; r++) {
-        double ry = y + 20.0 + r * 21.0;
-        dd_canvas_text(cv, x + 10.0, ry, rows[r].k, 11.5, false, false, th->text_secondary);
-        dd_canvas_text_Right(cv, x + w - 10.0, ry, rows[r].v, 11.5, rows[r].green, true, rows[r].green ? th->free_text : th->text);
+        double ry = y + 18.0 + r * 20.0;
+        dd_canvas_text(cv, x + 10.0, ry, rows[r].k, 11.0, false, false, th->text_secondary);
+        dd_canvas_text_Right(cv, x + w - 10.0, ry, rows[r].v, 11.0, rows[r].green, true, rows[r].green ? th->free_text : th->text);
     }
-    y += 174.0;
+    y += 166.0;
 
     if (n->is_directory && n->folder_idx >= 0 && st->tree->folders[n->folder_idx].child_count > 0) {
-        draw_section_caption(cv, th, x, y + 10.0, "LARGEST INSIDE");
+        draw_section_caption(cv, th, x, y + 10.0, "LARGEST SUB-ITEMS");
         y += 18.0;
         const DDFolderExtra *fe = &st->tree->folders[n->folder_idx];
         int lim = fe->child_count < 8 ? fe->child_count : 8;
@@ -1825,7 +1834,7 @@ static void render_inspector(DDAppState *st, DDCanvas *cv, DDRect ins) {
             const DDFileNode *cn = &st->tree->nodes[cidx];
             if (cn->is_deleted) continue;
             DDRect cr = {x, y, w, 28.0};
-            dd_canvas_round_rect(cv, cr, 6.0, (st->selected_node == cidx) ? th->chip : th->card,
+            dd_canvas_round_rect(cv, cr, 4.0, (st->selected_node == cidx) ? th->chip : th->card,
                                  (st->selected_node == cidx) ? th->control_border : th->border, 1.0);
             char csz[32];
             dd_format_bytes(cn->size_on_disk, csz, sizeof(csz));
@@ -1882,20 +1891,20 @@ static void render_duplicates_tab(DDAppState *st, DDCanvas *cv, DDRect area) {
             snprintf(status_s, sizeof(status_s), "Pass 3 of 3: Verifying SHA-256 content (%d / %d candidates)...", done, tot);
         }
         double cw = fmin(480.0, w - 40.0);
-        DDRect card = {x + (w - cw) * 0.5, area.y + (area.h - 110.0) * 0.45, cw, 100.0};
-        dd_canvas_round_rect(cv, card, 12.0, th->card, th->border, 1.0);
-        dd_canvas_text_center(cv, (DDRect){card.x + 16.0, card.y + 18.0, card.w - 32.0, 24.0}, status_s, 13.0, true, false, th->text);
-        DDRect pbar = {card.x + 24.0, card.y + 56.0, card.w - 48.0, 10.0};
-        dd_canvas_round_rect(cv, pbar, 5.0, th->track, dd_color_hex(0,0), 0);
+        DDRect card = {x + (w - cw) * 0.5, area.y + (area.h - 110.0) * 0.45, cw, 96.0};
+        dd_canvas_round_rect(cv, card, 4.0, th->card, th->border, 1.0);
+        dd_canvas_text_center(cv, (DDRect){card.x + 16.0, card.y + 16.0, card.w - 32.0, 24.0}, status_s, 12.5, true, false, th->text);
+        DDRect pbar = {card.x + 24.0, card.y + 54.0, card.w - 48.0, 8.0};
+        dd_canvas_round_rect(cv, pbar, 2.0, th->track, dd_color_hex(0,0), 0);
         double ratio = (tot > 0) ? ((double)done / (double)tot) : 0.25;
         if (ratio < 0.05) ratio = 0.05;
         if (ratio > 1.0) ratio = 1.0;
-        dd_canvas_round_rect(cv, (DDRect){pbar.x, pbar.y, pbar.w * ratio, pbar.h}, 5.0, th->ink, dd_color_hex(0,0), 0);
+        dd_canvas_round_rect(cv, (DDRect){pbar.x, pbar.y, pbar.w * ratio, pbar.h}, 2.0, th->ink, dd_color_hex(0,0), 0);
         dd_canvas_pop_clip(cv);
         return;
     }
     if (!st->duplicates.has_run) {
-        dd_canvas_text_center(cv, area, "Click 'Scan for Duplicates' to run 3-pass size + 64 KB sample + SHA-256 verification.", 13.5, false, false, th->text_secondary);
+        dd_canvas_text_center(cv, area, "Click 'Scan for Duplicates' to run 3-pass size + 64 KB sample + SHA-256 verification.", 13.0, false, false, th->text_secondary);
         dd_canvas_pop_clip(cv);
         return;
     }
@@ -1904,7 +1913,7 @@ static void render_duplicates_tab(DDAppState *st, DDCanvas *cv, DDRect area) {
     dd_format_bytes(st->duplicates.total_reclaimable, rec_s, sizeof(rec_s));
     snprintf(sum_s, sizeof(sum_s), "%s could be reclaimed across %d duplicate group%s",
              rec_s, st->duplicates.group_count, st->duplicates.group_count == 1 ? "" : "s");
-    dd_canvas_text(cv, x, y + 16.0, sum_s, 14.0, true, false, th->ink);
+    dd_canvas_text(cv, x, y + 16.0, sum_s, 13.5, true, false, th->ink);
     y += 28.0;
 
     DDRect list_r = {area.x, y, area.w, area.h - (y - area.y)};
@@ -1923,7 +1932,7 @@ static void render_duplicates_tab(DDAppState *st, DDCanvas *cv, DDRect area) {
     y -= st->scroll_y_main;
 
     if (st->duplicates.group_count == 0) {
-        dd_canvas_text(cv, x, y + 30.0, "No duplicate files found in the scanned tree.", 13.0, false, false, th->text_secondary);
+        dd_canvas_text(cv, x, y + 30.0, "No duplicate files found in the scanned tree.", 12.5, false, false, th->text_secondary);
     } else {
         for (int g = 0; g < st->duplicates.group_count; g++) {
             const DDDuplicateGroup *grp = &st->duplicates.groups[g];
@@ -1936,13 +1945,13 @@ static void render_duplicates_tab(DDAppState *st, DDCanvas *cv, DDRect area) {
             double gh = 34.0 + grp->count * 34.0 + 8.0;
             DDRect gc = {x, y, w, gh};
             if (gc.y + gc.h >= list_r.y && gc.y <= list_r.y + list_r.h) {
-                dd_canvas_round_rect(cv, gc, 10.0, th->card, th->border, 1.0);
+                dd_canvas_round_rect(cv, gc, 4.0, th->card, th->border, 1.0);
                 char fsz[32], wsz[32], ghdr[256];
                 dd_format_bytes(grp->file_size, fsz, sizeof(fsz));
                 dd_format_bytes(grp->wasted_bytes, wsz, sizeof(wsz));
                 snprintf(ghdr, sizeof(ghdr), "%d copies · %s each · %s reclaimable · SHA-256 %.12s...",
                          grp->count, fsz, wsz, grp->hash_hex);
-                dd_canvas_text(cv, x + 12.0, y + 22.0, ghdr, 12.0, true, true, th->text);
+                dd_canvas_text(cv, x + 12.0, y + 22.0, ghdr, 11.5, true, true, th->text);
 
                 int staged_in_grp = 0;
                 for (int j = 0; j < grp->count; j++) {
@@ -1955,10 +1964,10 @@ static void render_duplicates_tab(DDAppState *st, DDCanvas *cv, DDRect area) {
                     bool is_kept = (!is_stg && staged_in_grp == grp->count - 1);
                     char trunc[120];
                     dd_truncate_middle(grp->paths[j], 68, trunc, sizeof(trunc));
-                    dd_canvas_text_clipped(cv, (DDRect){x + 16.0, ry, w - 210.0, 30.0}, trunc, 11.5,
+                    dd_canvas_text_clipped(cv, (DDRect){x + 16.0, ry, w - 210.0, 30.0}, trunc, 11.0,
                                            is_kept, true, is_stg ? th->used_text : (is_kept ? th->free_text : th->text_secondary));
-                    const char *blbl = is_kept ? "✓ Keeping this copy" : (is_stg ? "✓ Staged (Keep instead)" : "Keep this, stage the rest");
-                    draw_outline_button(cv, th, (DDRect){x + w - 180.0, ry + 3.0, 168.0, 26.0},
+                    const char *blbl = is_kept ? "✓ Retained" : (is_stg ? "✓ Staged" : "Keep, stage others");
+                    draw_outline_button(cv, th, (DDRect){x + w - 170.0, ry + 3.0, 158.0, 26.0},
                                         blbl, is_kept, ACT_DUP_KEEP_ONE, g, j, NULL);
                 }
             }
@@ -1986,18 +1995,18 @@ static void render_applications_tab(DDAppState *st, DDCanvas *cv, DDRect area) {
     char tot_s[32], hdr_s[128];
     dd_format_bytes(st->app_store.grand_total, tot_s, sizeof(tot_s));
     if (st->app_store.loading && !st->app_store.loaded) {
-        snprintf(hdr_s, sizeof(hdr_s), "Applications (Scanning installed apps...)");
+        snprintf(hdr_s, sizeof(hdr_s), "App Storage (Scanning installed apps...)");
     } else {
-        snprintf(hdr_s, sizeof(hdr_s), "Applications (%d installed · %s total)", st->app_store.count, tot_s);
+        snprintf(hdr_s, sizeof(hdr_s), "App Storage (%d installed · %s total)", st->app_store.count, tot_s);
     }
-    dd_canvas_text(cv, x, y + 22.0, hdr_s, 19.0, true, false, th->text);
-    draw_outline_button(cv, th, (DDRect){x + w - 100.0, y, 100.0, 32.0},
+    dd_canvas_text(cv, x, y + 22.0, hdr_s, 18.0, true, false, th->text);
+    draw_outline_button(cv, th, (DDRect){x + w - 100.0, y, 100.0, 30.0},
                         st->app_store.loading ? "Scanning..." : "Refresh",
                         st->app_store.loading != 0, ACT_APPS_REFRESH, 0, 0, NULL);
-    y += 42.0;
+    y += 40.0;
 
     if (st->app_store.loading && !st->app_store.loaded) {
-        dd_canvas_text_center(cv, area, "Scanning installed applications and calculating leftover cache sizes...", 13.5, false, false, th->text_secondary);
+        dd_canvas_text_center(cv, area, "Scanning installed applications and calculating leftover cache sizes...", 13.0, false, false, th->text_secondary);
         dd_canvas_pop_clip(cv);
         return;
     }
@@ -2020,7 +2029,7 @@ static void render_applications_tab(DDAppState *st, DDCanvas *cv, DDRect area) {
         double rh = app->expanded ? (52.0 + (1 + app->leftover_count) * 28.0 + 10.0) : 52.0;
         DDRect ar = {x, y, w, rh};
         if (ar.y + ar.h >= list_r.y && ar.y <= list_r.y + list_r.h) {
-            dd_canvas_round_rect(cv, ar, 10.0, th->card, th->border, 1.0);
+            dd_canvas_round_rect(cv, ar, 4.0, th->card, th->border, 1.0);
             dd_canvas_draw_icon(cv, app->expanded ? ICON_CHEVRON_DOWN : ICON_CHEVRON_RIGHT, x + 12.0, y + 18.0, 16.0, th->text_secondary);
             dd_canvas_draw_icon(cv, ICON_APPS, x + 34.0, y + 16.0, 20.0, th->ink);
 
@@ -2103,7 +2112,7 @@ static void render_monitor_tab(DDAppState *st, DDCanvas *cv, DDRect area) {
     double w = area.w - 40.0;
     double hdr_y = area.y + 18.0;
 
-    dd_canvas_text(cv, x, hdr_y + 22.0, "Monitor", 20.0, true, false, th->text);
+    dd_canvas_text(cv, x, hdr_y + 22.0, "Resource Monitor", 20.0, true, false, th->text);
     DDRect list_r = {area.x, hdr_y + 36.0, area.w, area.h - 54.0};
 
     bool single_col = (w < 680.0);
@@ -2129,7 +2138,7 @@ static void render_monitor_tab(DDAppState *st, DDCanvas *cv, DDRect area) {
     DDRect c_net = {x, y_row2, cw, ch};
     DDRect c_sto = single_col ? (DDRect){x, y_row2 + ch + 14.0, cw, ch} : (DDRect){x + cw + 16.0, y_row2, cw, ch};
 
-    dd_canvas_round_rect(cv, c_cpu, 10.0, th->card, th->border, 1.0);
+    dd_canvas_round_rect(cv, c_cpu, 4.0, th->card, th->border, 1.0);
     draw_section_caption(cv, th, c_cpu.x + 14.0, c_cpu.y + 20.0, "CPU");
     char cpu_big[32], cpu_sub[128];
     snprintf(cpu_big, sizeof(cpu_big), "%.1f%%", mon->cpu_total_pct);
@@ -2139,7 +2148,7 @@ static void render_monitor_tab(DDAppState *st, DDCanvas *cv, DDRect area) {
     draw_sparkline(cv, (DDRect){c_cpu.x + 14.0, c_cpu.y + 64.0, c_cpu.w - 28.0, 54.0}, mon->cpu_history, mon->history_count, 100.0, th->ink);
     dd_canvas_text(cv, c_cpu.x + 14.0, c_cpu.y + 142.0, cpu_sub, 11.0, false, true, th->text_secondary);
 
-    dd_canvas_round_rect(cv, c_mem, 10.0, th->card, th->border, 1.0);
+    dd_canvas_round_rect(cv, c_mem, 4.0, th->card, th->border, 1.0);
     draw_section_caption(cv, th, c_mem.x + 14.0, c_mem.y + 20.0, "MEMORY");
     char m_used[32], m_wire[32], m_comp[32], m_tot[32], m_sub[160];
     dd_format_bytes(mon->mem_used, m_used, sizeof(m_used));
@@ -2149,7 +2158,7 @@ static void render_monitor_tab(DDAppState *st, DDCanvas *cv, DDRect area) {
     dd_canvas_text(cv, c_mem.x + 14.0, c_mem.y + 52.0, m_used, 24.0, true, true, th->text);
 
     DDRect mbar = {c_mem.x + 14.0, c_mem.y + 64.0, c_mem.w - 28.0, 12.0};
-    dd_canvas_round_rect(cv, mbar, 6.0, th->track, th->border, 0.8);
+    dd_canvas_round_rect(cv, mbar, 2.0, th->track, th->border, 0.8);
     if (mon->mem_total > 0) {
         double w_w = ((double)mon->mem_wired / (double)mon->mem_total) * mbar.w;
         double w_c = ((double)mon->mem_compressed / (double)mon->mem_total) * mbar.w;
@@ -2162,7 +2171,7 @@ static void render_monitor_tab(DDAppState *st, DDCanvas *cv, DDRect area) {
     snprintf(m_sub, sizeof(m_sub), "WIRED %s   ·   CACHED %s   ·   TOTAL %s", m_wire, m_comp, m_tot);
     dd_canvas_text(cv, c_mem.x + 14.0, c_mem.y + 142.0, m_sub, 11.0, false, true, th->text_secondary);
 
-    dd_canvas_round_rect(cv, c_net, 10.0, th->card, th->border, 1.0);
+    dd_canvas_round_rect(cv, c_net, 4.0, th->card, th->border, 1.0);
     draw_section_caption(cv, th, c_net.x + 14.0, c_net.y + 20.0, "NETWORK");
     char ndown[32], nup[32], nsin[32], nbig[48], nsub[160];
     dd_format_bytes(mon->net_down_per_sec, ndown, sizeof(ndown));
@@ -2173,7 +2182,7 @@ static void render_monitor_tab(DDAppState *st, DDCanvas *cv, DDRect area) {
     dd_canvas_text(cv, c_net.x + 14.0, c_net.y + 58.0, nbig, 24.0, true, true, th->text);
     dd_canvas_text(cv, c_net.x + 14.0, c_net.y + 142.0, nsub, 11.0, false, true, th->text_secondary);
 
-    dd_canvas_round_rect(cv, c_sto, 10.0, th->card, th->border, 1.0);
+    dd_canvas_round_rect(cv, c_sto, 4.0, th->card, th->border, 1.0);
     draw_section_caption(cv, th, c_sto.x + 14.0, c_sto.y + 20.0, "STORAGE");
     int vshow = (st->mon_show_all_vols || mon->volume_count <= 3) ? mon->volume_count : 3;
     double vy = c_sto.y + 30.0;
@@ -2186,9 +2195,9 @@ static void render_monitor_tab(DDAppState *st, DDCanvas *cv, DDRect area) {
         dd_canvas_text_clipped(cv, (DDRect){c_sto.x + 14.0, vy, c_sto.w * 0.55, 16.0}, vi->name, 11.0, true, false, th->text);
         dd_canvas_text_Right(cv, c_sto.x + c_sto.w - 14.0, vy + 12.0, vsz, 10.5, false, true, th->text_secondary);
         DDRect vbar = {c_sto.x + 14.0, vy + 16.0, c_sto.w - 28.0, 6.0};
-        dd_canvas_round_rect(cv, vbar, 3.0, th->track, dd_color_hex(0,0), 0);
+        dd_canvas_round_rect(cv, vbar, 2.0, th->track, dd_color_hex(0,0), 0);
         double vr = vi->total_bytes > 0 ? ((double)vi->used_bytes / (double)vi->total_bytes) : 0.0;
-        dd_canvas_round_rect(cv, (DDRect){vbar.x, vbar.y, vbar.w * vr, vbar.h}, 3.0, th->ink, dd_color_hex(0,0), 0);
+        dd_canvas_round_rect(cv, (DDRect){vbar.x, vbar.y, vbar.w * vr, vbar.h}, 2.0, th->ink, dd_color_hex(0,0), 0);
         vy += 26.0;
     }
     if (mon->volume_count > 3) {
@@ -2213,7 +2222,7 @@ static void render_monitor_tab(DDAppState *st, DDCanvas *cv, DDRect area) {
     for (int i = 0; i < pmax; i++) {
         if (!str_contains_ci(plist[i].name, st->search_query)) continue;
         DDRect pr = {x, y, w, 28.0};
-        dd_canvas_round_rect(cv, pr, 6.0, th->card, th->border, 0.8);
+        dd_canvas_round_rect(cv, pr, 4.0, th->card, th->border, 0.8);
         char pid_s[24], cpu_s[24], mem_s[32];
         snprintf(pid_s, sizeof(pid_s), "%d", plist[i].pid);
         snprintf(cpu_s, sizeof(cpu_s), "%.1f%%", plist[i].cpu_percent);
@@ -2249,7 +2258,7 @@ static void render_snapshots_tab(DDAppState *st, DDCanvas *cv, DDRect area) {
     if (can_snap) {
         draw_ink_button(cv, th, (DDRect){x + w - 170.0, hdr_y, 170.0, 34.0}, "Take Snapshot Now", ACT_SNAP_TAKE, 0, 0, NULL);
     } else {
-        dd_canvas_round_rect(cv, (DDRect){x + w - 170.0, hdr_y, 170.0, 34.0}, 8.0, th->chip, th->border, 1.0);
+        dd_canvas_round_rect(cv, (DDRect){x + w - 170.0, hdr_y, 170.0, 34.0}, 4.0, th->chip, th->border, 1.0);
         dd_canvas_text_center(cv, (DDRect){x + w - 170.0, hdr_y, 170.0, 34.0}, "Take Snapshot Now", 12.5, true, false, th->text_tertiary);
     }
 
@@ -2273,7 +2282,7 @@ static void render_snapshots_tab(DDAppState *st, DDCanvas *cv, DDRect area) {
     for (int i = 0; i < st->snapshots.count; i++) {
         const DDSnapshotSummary *s = &st->snapshots.summaries[i];
         DDRect sr = {x, y, w, 46.0};
-        dd_canvas_round_rect(cv, sr, 8.0, th->card, th->border, 1.0);
+        dd_canvas_round_rect(cv, sr, 4.0, th->card, th->border, 1.0);
         char sz_s[32], dt_s[48], meta[128];
         dd_format_bytes(s->total_bytes, sz_s, sizeof(sz_s));
         dd_format_date(s->timestamp, dt_s, sizeof(dt_s));
@@ -2302,7 +2311,7 @@ static void render_snapshots_tab(DDAppState *st, DDCanvas *cv, DDRect area) {
             for (int d = 0; d < st->snapshots.diff_count; d++) {
                 const DDSnapshotDiffRow *dr = &st->snapshots.diff_rows[d];
                 DDRect rr = {x, y, w, 30.0};
-                dd_canvas_round_rect(cv, rr, 6.0, th->card, th->border, 0.8);
+                dd_canvas_round_rect(cv, rr, 4.0, th->card, th->border, 0.8);
                 dd_canvas_text_clipped(cv, (DDRect){x + 12.0, y, w - 150.0, 30.0}, dr->path, 11.5, false, true, th->text);
                 char dsz[32], dlbl[48];
                 dd_format_bytes(dr->delta >= 0 ? dr->delta : -dr->delta, dsz, sizeof(dsz));
@@ -2323,29 +2332,29 @@ static void render_queue_popover(DDAppState *st, DDCanvas *cv, int W) {
     if (pw > W - 24.0) pw = W - 24.0;
     DDRect pop = {(double)W - pw - 16.0, 62.0, pw, ph};
 
-    dd_canvas_round_rect(cv, (DDRect){pop.x + 3.0, pop.y + 5.0, pop.w, pop.h}, 12.0, dd_color_hex(0x000000, 0.25), dd_color_hex(0,0), 0);
-    dd_canvas_round_rect(cv, pop, 12.0, th->background, th->control_border, 1.5);
+    dd_canvas_round_rect(cv, (DDRect){pop.x + 3.0, pop.y + 5.0, pop.w, pop.h}, 4.0, dd_color_hex(0x000000, 0.25), dd_color_hex(0,0), 0);
+    dd_canvas_round_rect(cv, pop, 4.0, th->background, th->control_border, 1.5);
     dd_canvas_push_clip(cv, pop);
-    dd_canvas_register_hit(cv, ACT_NONE, 0, 0, NULL, "Cleanup Queue Popover", pop, false);
+    dd_canvas_register_hit(cv, ACT_NONE, 0, 0, NULL, "Staging Area Popover", pop, false);
 
     double x = pop.x + 16.0, w = pop.w - 32.0, y = pop.y + 14.0;
     char tot_s[32], sub_s[64];
     dd_format_bytes(st->cleanup_queue.total_size, tot_s, sizeof(tot_s));
     snprintf(sub_s, sizeof(sub_s), "%s staged (%d items)", tot_s, st->cleanup_queue.count);
 
-    dd_canvas_text(cv, x, y + 18.0, "Cleanup Queue", 15.0, true, false, th->text);
+    dd_canvas_text(cv, x, y + 18.0, "Staging Area", 15.0, true, false, th->text);
     dd_canvas_text(cv, x, y + 36.0, sub_s, 11.5, false, true, th->text_secondary);
 
     if (st->cleanup_queue.count > 0) {
         draw_outline_button(cv, th, (DDRect){x + w - 196.0, y + 6.0, 62.0, 30.0}, "Clear", false, ACT_QUEUE_CLEAR, 0, 0, NULL);
         DDRect tr_btn = {x + w - 128.0, y + 6.0, 128.0, 30.0};
-        dd_canvas_round_rect(cv, tr_btn, 8.0, th->used, th->control_border, 1.0);
+        dd_canvas_round_rect(cv, tr_btn, 4.0, th->used, th->control_border, 1.0);
         dd_canvas_text_center(cv, tr_btn, "Move to Trash...", 12.0, true, false, dd_color_hex(0xFFFFFF, 1.0));
         dd_canvas_register_hit(cv, ACT_QUEUE_ASK_TRASH, 0, 0, NULL, "Move to Trash", tr_btn, true);
     } else {
-        dd_canvas_round_rect(cv, (DDRect){x + w - 196.0, y + 6.0, 62.0, 30.0}, 8.0, th->chip, th->border, 1.0);
+        dd_canvas_round_rect(cv, (DDRect){x + w - 196.0, y + 6.0, 62.0, 30.0}, 4.0, th->chip, th->border, 1.0);
         dd_canvas_text_center(cv, (DDRect){x + w - 196.0, y + 6.0, 62.0, 30.0}, "Clear", 12.0, false, false, th->text_tertiary);
-        dd_canvas_round_rect(cv, (DDRect){x + w - 128.0, y + 6.0, 128.0, 30.0}, 8.0, th->chip, th->border, 1.0);
+        dd_canvas_round_rect(cv, (DDRect){x + w - 128.0, y + 6.0, 128.0, 30.0}, 4.0, th->chip, th->border, 1.0);
         dd_canvas_text_center(cv, (DDRect){x + w - 128.0, y + 6.0, 128.0, 30.0}, "Move to Trash...", 12.0, false, false, th->text_tertiary);
     }
     y += 48.0;
@@ -2357,8 +2366,8 @@ static void render_queue_popover(DDAppState *st, DDCanvas *cv, int W) {
         st->scroll_y_popover = 0;
         double cy = pop.y + pop.h * 0.52;
         dd_canvas_draw_icon(cv, ICON_TRASH, pop.x + pop.w * 0.5 - 16.0, cy - 36.0, 32.0, th->text_tertiary);
-        dd_canvas_text_center(cv, (DDRect){x, cy + 4.0, w, 24.0}, "Nothing staged yet...", 14.0, true, false, th->text);
-        dd_canvas_text_center(cv, (DDRect){x, cy + 28.0, w, 20.0}, "Stage items from Explore, Quick Wins, Duplicates, or Apps.", 11.5, false, false, th->text_secondary);
+        dd_canvas_text_center(cv, (DDRect){x, cy + 4.0, w, 24.0}, "Nothing staged for cleanup", 14.0, true, false, th->text);
+        dd_canvas_text_center(cv, (DDRect){x, cy + 28.0, w, 20.0}, "Stage items from Overview, Duplicate Finder, or App Storage.", 11.5, false, false, th->text_secondary);
     } else {
         DDRect list_r = {pop.x, y, pop.w, pop.y + pop.h - y - 6.0};
         double total_h = st->cleanup_queue.count * 44.0 + 8.0;
@@ -2369,7 +2378,7 @@ static void render_queue_popover(DDAppState *st, DDCanvas *cv, int W) {
             const DDCleanupItem *it = &st->cleanup_queue.items[i];
             DDRect ir = {x, y, w, 40.0};
             if (ir.y + ir.h >= list_r.y && ir.y <= list_r.y + list_r.h) {
-                dd_canvas_round_rect(cv, ir, 8.0, th->card, th->border, 1.0);
+                dd_canvas_round_rect(cv, ir, 4.0, th->card, th->border, 1.0);
                 dd_canvas_text_clipped(cv, (DDRect){x + 10.0, y + 3.0, w - 110.0, 20.0}, it->name, 12.5, true, false, th->text);
                 dd_canvas_text_clipped(cv, (DDRect){x + 10.0, y + 20.0, w - 110.0, 18.0}, it->reason, 11.0, false, false, th->text_secondary);
                 char isz[32];
@@ -2378,7 +2387,7 @@ static void render_queue_popover(DDAppState *st, DDCanvas *cv, int W) {
 
                 DDRect rm = {x + w - 28.0, y + 8.0, 22.0, 24.0};
                 dd_canvas_draw_icon(cv, ICON_CLOSE, rm.x + 4.0, rm.y + 5.0, 14.0, th->text_secondary);
-                dd_canvas_register_hit(cv, ACT_QUEUE_REMOVE_ITEM, i, 0, NULL, "Remove from Queue", rm, true);
+                dd_canvas_register_hit(cv, ACT_QUEUE_REMOVE_ITEM, i, 0, NULL, "Remove from Staging Area", rm, true);
             }
             y += 44.0;
         }
@@ -2400,10 +2409,10 @@ static void render_modals(DDAppState *st, DDCanvas *cv, int W, int H) {
     }
 
     if (st->show_ctx_menu) {
-        DDRect cm = {st->ctx_x, st->ctx_y, 210.0, 168.0};
+        DDRect cm = {st->ctx_x, st->ctx_y, 220.0, 168.0};
         if (cm.x + cm.w > W - 10.0) cm.x = W - cm.w - 10.0;
         if (cm.y + cm.h > H - 10.0) cm.y = H - cm.h - 10.0;
-        dd_canvas_round_rect(cv, cm, 10.0, th->card, th->control_border, 1.5);
+        dd_canvas_round_rect(cv, cm, 4.0, th->card, th->control_border, 1.5);
         dd_canvas_register_hit(cv, ACT_NONE, 0, 0, NULL, "Context Menu", cm, false);
         double y = cm.y + 8.0;
         bool is_staged = is_node_staged(st, st->ctx_node_idx);
@@ -2412,11 +2421,11 @@ static void render_modals(DDAppState *st, DDCanvas *cv, int W, int H) {
             {"Quick Look", ACT_CTX_QUICKLOOK},
             {"Reveal in File Manager", ACT_CTX_REVEAL},
             {"Copy Path", ACT_CTX_COPY},
-            {is_staged ? "Remove from Cleanup" : "Add to Cleanup", ACT_CTX_STAGE}
+            {is_staged ? "Remove from Staging Area" : "Stage for Cleanup", ACT_CTX_STAGE}
         };
         for (int i = 0; i < 5; i++) {
             DDRect ir = {cm.x + 6.0, y, cm.w - 12.0, 28.0};
-            dd_canvas_round_rect(cv, ir, 6.0, th->chip, dd_color_hex(0,0), 0);
+            dd_canvas_round_rect(cv, ir, 4.0, th->chip, dd_color_hex(0,0), 0);
             dd_canvas_text(cv, ir.x + 10.0, ir.y + 19.0, items[i].lbl, 12.0, false, false, th->text);
             dd_canvas_register_hit(cv, items[i].act, st->ctx_node_idx, st->ctx_qw_group, NULL, items[i].lbl, ir, true);
             y += 30.0;
@@ -2426,7 +2435,7 @@ static void render_modals(DDAppState *st, DDCanvas *cv, int W, int H) {
     if (st->show_trash_confirm) {
         dd_canvas_fill_rect(cv, (DDRect){0, 0, (double)W, (double)H}, dd_color_hex(0x000000, 0.45));
         DDRect md = {(W - 420.0) * 0.5, (H - 190.0) * 0.5, 420.0, 190.0};
-        dd_canvas_round_rect(cv, md, 12.0, th->card, th->control_border, 1.5);
+        dd_canvas_round_rect(cv, md, 4.0, th->card, th->control_border, 1.5);
         dd_canvas_register_hit(cv, ACT_NONE, 0, 0, NULL, "Trash Confirm Dialog", md, false);
         char title[96], body[160], sz_s[32];
         dd_format_bytes(st->cleanup_queue.total_size, sz_s, sizeof(sz_s));
@@ -2437,7 +2446,7 @@ static void render_modals(DDAppState *st, DDCanvas *cv, int W, int H) {
 
         draw_outline_button(cv, th, (DDRect){md.x + md.w - 230.0, md.y + 136.0, 96.0, 34.0}, "Cancel", false, ACT_CONFIRM_TRASH_CANCEL, 0, 0, NULL);
         DDRect yes_r = {md.x + md.w - 124.0, md.y + 136.0, 104.0, 34.0};
-        dd_canvas_round_rect(cv, yes_r, 8.0, th->used, th->control_border, 1.0);
+        dd_canvas_round_rect(cv, yes_r, 4.0, th->used, th->control_border, 1.0);
         dd_canvas_text_center(cv, yes_r, "Move to Trash", 12.5, true, false, dd_color_hex(0xFFFFFF, 1.0));
         dd_canvas_register_hit(cv, ACT_CONFIRM_TRASH_YES, 0, 0, NULL, "Confirm Move to Trash", yes_r, true);
     }
@@ -2446,20 +2455,20 @@ static void render_modals(DDAppState *st, DDCanvas *cv, int W, int H) {
         const DDInstalledApp *app = &st->app_store.apps[st->uninstall_app_idx];
         dd_canvas_fill_rect(cv, (DDRect){0, 0, (double)W, (double)H}, dd_color_hex(0x000000, 0.45));
         DDRect md = {(W - 460.0) * 0.5, (H - 210.0) * 0.5, 460.0, 210.0};
-        dd_canvas_round_rect(cv, md, 12.0, th->card, th->control_border, 1.5);
+        dd_canvas_round_rect(cv, md, 4.0, th->card, th->control_border, 1.5);
         dd_canvas_register_hit(cv, ACT_NONE, 0, 0, NULL, "Uninstall Dialog", md, false);
         char title[160], body[200], tsz[32];
         dd_format_bytes(app->total_size, tsz, sizeof(tsz));
         snprintf(title, sizeof(title), "Uninstall %s?", app->name);
-        snprintf(body, sizeof(body), "Bundle + %d leftover group(s) total %s. Choose whether to move to Trash now or stage in Cleanup Queue.",
+        snprintf(body, sizeof(body), "Bundle + %d leftover group(s) total %s. Choose whether to move to Trash now or stage for cleanup.",
                  app->leftover_count, tsz);
         dd_canvas_text(cv, md.x + 20.0, md.y + 38.0, title, 16.0, true, false, th->text);
         dd_canvas_text_clipped(cv, (DDRect){md.x + 20.0, md.y + 58.0, md.w - 40.0, 50.0}, body, 12.0, false, false, th->text_secondary);
 
         draw_outline_button(cv, th, (DDRect){md.x + 20.0, md.y + 152.0, 90.0, 34.0}, "Cancel", false, ACT_CLOSE_MODAL, 0, 0, NULL);
-        draw_outline_button(cv, th, (DDRect){md.x + 120.0, md.y + 152.0, 172.0, 34.0}, "Add to Cleanup Queue", false, ACT_APP_UNINSTALL_QUEUE, st->uninstall_app_idx, 0, NULL);
+        draw_outline_button(cv, th, (DDRect){md.x + 120.0, md.y + 152.0, 172.0, 34.0}, "Stage for Cleanup", false, ACT_APP_UNINSTALL_QUEUE, st->uninstall_app_idx, 0, NULL);
         DDRect tr_r = {md.x + 302.0, md.y + 152.0, 138.0, 34.0};
-        dd_canvas_round_rect(cv, tr_r, 8.0, th->used, th->control_border, 1.0);
+        dd_canvas_round_rect(cv, tr_r, 4.0, th->used, th->control_border, 1.0);
         dd_canvas_text_center(cv, tr_r, "Move to Trash", 12.5, true, false, dd_color_hex(0xFFFFFF, 1.0));
         dd_canvas_register_hit(cv, ACT_APP_UNINSTALL_TRASH, st->uninstall_app_idx, 0, NULL, "Move App to Trash", tr_r, true);
     }
@@ -2468,7 +2477,7 @@ static void render_modals(DDAppState *st, DDCanvas *cv, int W, int H) {
         const DDFileNode *qn = &st->tree->nodes[st->quicklook_node];
         dd_canvas_fill_rect(cv, (DDRect){0, 0, (double)W, (double)H}, dd_color_hex(0x000000, 0.45));
         DDRect md = {(W - 500.0) * 0.5, (H - 250.0) * 0.5, 500.0, 250.0};
-        dd_canvas_round_rect(cv, md, 12.0, th->card, th->control_border, 1.5);
+        dd_canvas_round_rect(cv, md, 4.0, th->card, th->control_border, 1.5);
         dd_canvas_register_hit(cv, ACT_NONE, 0, 0, NULL, "Quick Look Dialog", md, false);
         char qpath[512], qsz[32], qmod[64];
         dd_node_build_path(st->tree, st->quicklook_node, qpath, sizeof(qpath));
@@ -2492,16 +2501,16 @@ static void render_modals(DDAppState *st, DDCanvas *cv, int W, int H) {
         dd_canvas_text(cv, md.x + 130.0, md.y + 156.0, qmod, 12.0, false, true, th->text);
 
         bool staged = is_node_staged(st, st->quicklook_node);
-        draw_outline_button(cv, th, (DDRect){md.x + 20.0, md.y + 196.0, 116.0, 34.0}, "Reveal in Files", false, ACT_INSPECTOR_REVEAL, st->quicklook_node, 0, NULL);
-        draw_outline_button(cv, th, (DDRect){md.x + 144.0, md.y + 196.0, 96.0, 34.0}, "Copy Path", false, ACT_INSPECTOR_COPY, st->quicklook_node, 0, NULL);
-        draw_outline_button(cv, th, (DDRect){md.x + 248.0, md.y + 196.0, staged ? 116.0 : 106.0, 34.0}, staged ? "Staged ✓" : "Add to Queue", staged, ACT_INSPECTOR_STAGE, st->quicklook_node, 0, NULL);
-        draw_outline_button(cv, th, (DDRect){md.x + md.w - 100.0, md.y + 196.0, 80.0, 34.0}, "Close (Esc)", false, ACT_CLOSE_MODAL, 0, 0, NULL);
+        draw_outline_button(cv, th, (DDRect){md.x + 20.0, md.y + 196.0, 110.0, 34.0}, "Reveal in Files", false, ACT_INSPECTOR_REVEAL, st->quicklook_node, 0, NULL);
+        draw_outline_button(cv, th, (DDRect){md.x + 138.0, md.y + 196.0, 90.0, 34.0}, "Copy Path", false, ACT_INSPECTOR_COPY, st->quicklook_node, 0, NULL);
+        draw_outline_button(cv, th, (DDRect){md.x + 236.0, md.y + 196.0, staged ? 116.0 : 138.0, 34.0}, staged ? "Staged ✓" : "Stage for Cleanup", staged, ACT_INSPECTOR_STAGE, st->quicklook_node, 0, NULL);
+        draw_outline_button(cv, th, (DDRect){md.x + md.w - 96.0, md.y + 196.0, 76.0, 34.0}, "Close (Esc)", false, ACT_CLOSE_MODAL, 0, 0, NULL);
     }
 
     if (st->show_shortcuts_help) {
         dd_canvas_fill_rect(cv, (DDRect){0, 0, (double)W, (double)H}, dd_color_hex(0x000000, 0.45));
         DDRect md = {(W - 540.0) * 0.5, (H - 430.0) * 0.5, 540.0, 430.0};
-        dd_canvas_round_rect(cv, md, 12.0, th->card, th->control_border, 1.5);
+        dd_canvas_round_rect(cv, md, 4.0, th->card, th->control_border, 1.5);
         dd_canvas_register_hit(cv, ACT_NONE, 0, 0, NULL, "Shortcuts Help", md, false);
 
         dd_canvas_text(cv, md.x + 24.0, md.y + 34.0, "Keyboard Shortcuts", 16.0, true, false, th->text);
@@ -2509,13 +2518,13 @@ static void render_modals(DDAppState *st, DDCanvas *cv, int W, int H) {
 
         double sy = md.y + 86.0;
         static const struct { const char *key; const char *desc; } scs[] = {
-            {"Arrow Keys", "Navigate files and folders in Explore view"},
+            {"Arrow Keys", "Navigate files and folders in Overview"},
             {"Enter / Right", "Drill down into selected folder"},
             {"Backspace / Left", "Navigate up to parent directory"},
             {"Space", "Toggle Quick Look file preview"},
             {"Ctrl+F / Ctrl+K", "Focus filter search box"},
-            {"Ctrl+1 .. Ctrl+5", "Switch tabs (Explore, Dups, Apps, Monitor, Snaps)"},
-            {"1 .. 9", "Switch Explore mode (Treemap, Folders, Sunburst, etc.)"},
+            {"Ctrl+1 .. Ctrl+5", "Switch tabs (Overview, Dups, Apps, Monitor, Snaps)"},
+            {"1 .. 9", "Switch visualization mode (Treemap, Folders, Sunburst, etc.)"},
             {"+ / -", "Increase or decrease visualization depth limit"},
             {"A", "Toggle compact label abbreviation on / off"},
             {"Ctrl+R", "Rescan current folder"},
@@ -2537,7 +2546,7 @@ static void render_modals(DDAppState *st, DDCanvas *cv, int W, int H) {
     if (st->show_trash_error) {
         dd_canvas_fill_rect(cv, (DDRect){0, 0, (double)W, (double)H}, dd_color_hex(0x000000, 0.45));
         DDRect md = {(W - 440.0) * 0.5, (H - 180.0) * 0.5, 440.0, 180.0};
-        dd_canvas_round_rect(cv, md, 12.0, th->card, th->control_border, 1.5);
+        dd_canvas_round_rect(cv, md, 4.0, th->card, th->control_border, 1.5);
         dd_canvas_register_hit(cv, ACT_NONE, 0, 0, NULL, "Error Dialog", md, false);
         dd_canvas_text(cv, md.x + 20.0, md.y + 38.0, st->trash_error_msg, 14.0, true, false, th->used_text);
         dd_canvas_text(cv, md.x + 20.0, md.y + 68.0, "Check filesystem permissions for the restricted items.", 12.0, false, false, th->text_secondary);
@@ -2596,7 +2605,7 @@ void dd_views_render(DDAppState *st, DDCanvas *cv) {
         const DDHitRegion *fh = dd_canvas_get_hit(cv, st->focused_hit_idx);
         if (fh && fh->focusable) {
             DDRect fr = {fh->rect.x - 2.0, fh->rect.y - 2.0, fh->rect.w + 4.0, fh->rect.h + 4.0};
-            dd_canvas_round_rect(cv, fr, 9.0, dd_color_hex(0,0), th->focus_ring, 2.2);
+            dd_canvas_round_rect(cv, fr, 4.0, dd_color_hex(0,0), th->focus_ring, 2.0);
         }
     }
 
