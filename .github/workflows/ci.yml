@@ -86,4 +86,4 @@ jobs:
       - name: Check for disallowed em dashes
         run: |
           echo "Scanning markdown and source files for em dashes..."
-          ! grep -rn "—" Sources/ src/ docs/ README.md Packaging/
+          ! grep -rn "—" Sources/ src/ docs/ README.md Packaging/ ARCHITECTURE.md CHANGELOG.md CONTRIBUTING.md SECURITY.md
