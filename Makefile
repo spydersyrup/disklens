@@ -17,11 +17,11 @@ all: linux windows
 
 linux:
 	@mkdir -p dist
-	./scripts/build_app.sh
+	./scripts/build_app.sh linux
 
 windows:
 	@mkdir -p dist
-	./scripts/build_app.sh
+	./scripts/build_app.sh windows
 
 icon:
 	./scripts/make_icon.sh
