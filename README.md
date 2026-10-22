@@ -21,6 +21,7 @@ Items are never deleted directly. Every item is staged in the Cleanup Queue firs
 - **Grouping modes**: Group views by folder structure, file category (video, audio, image, documents, developer, archives, apps, system, other), or last modified age.
 - **Duplicate finder**: Three-pass filter checking exact file size, 16 KB head and tail SHA-256 prehash, and full streaming SHA-256 hash.
 - **Application leftovers**: Locates installed apps and residual configuration or cache directories in user home folders.
+- **Drive auto-discovery**: Detects local physical volumes, mount points, and used capacity with quick-scan cards on the idle start screen.
 - **System monitor and snapshots**: Live process and resource monitor, plus JSON storage snapshots to track disk changes over time.
 
 ## Keyboard Shortcuts
@@ -72,6 +73,8 @@ make package
 
 ## Running
 
+### Graphical Interface
+
 ```bash
 # Launch GUI
 ./dist/disksonar
@@ -85,6 +88,32 @@ DISKSONAR_MODE=Treemap ./dist/disksonar
 # Exclude specific folders, extensions, or patterns
 ./dist/disksonar --exclude "node_modules,target,*.tmp,.cache"
 ```
+
+### Headless CLI Reports and Exports
+
+DiskSonar can run in headless mode without a display server to print summaries or produce file exports:
+
+```bash
+# Terminal summary with category breakdown
+./dist/disksonar /home --summary
+
+# Ranked listing of top largest items (default: 15)
+./dist/disksonar /home --top 25
+
+# Export full scan tree to JSON
+./dist/disksonar /home --json storage-report.json
+
+# Export flat item listing to CSV
+./dist/disksonar /home --csv storage-report.csv
+
+# Generate self-contained interactive HTML storage report
+./dist/disksonar /home --html storage-report.html
+
+# Combine exclusion patterns with reports
+./dist/disksonar /home --exclude "target,node_modules" --summary --html report.html
+```
+
+HTML reports are self-contained with offline search and table sorting. File paths and names are contextual entity-escaped to protect against XSS, and CSV exports prefix formula indicator characters (`=`, `+`, `-`, `@`) to guard against spreadsheet formula injection.
 
 ## Exclusion Rules and Ignore Files
 

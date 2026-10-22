@@ -17,7 +17,7 @@ body:
     id: version
     attributes:
       label: DiskSonar Version or Commit SHA
-      placeholder: e.g. v1.0.0 or commit hash
+      placeholder: e.g. v0.1.0 or commit hash
     validations:
       required: true
   - type: textarea
