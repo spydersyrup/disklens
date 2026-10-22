@@ -5,7 +5,7 @@ All notable changes to DiskSonar will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.1] - 2026-10-23
 
 ### Fixed
 - **Deep Path Traversal**: Expanded path buffers to 4096 bytes across scanner jobs, progress reporting, and export builders, preventing directory truncation on deeply nested hierarchies (e.g. package caches and deep monorepos).
@@ -13,10 +13,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Serialized Async Tree Deallocation**: Synchronized `dd_tree_free_async` background cleanup so previous trees finish freeing before new ones begin, eliminating memory stacking during rapid folder navigation.
 - **Dynamic Path Reconstruction**: Added expandable ancestry chain buffers in `dd_node_build_path`, eliminating truncation for directories deeper than 128 levels.
 - **Export Buffer Safety & Notices**: Upgraded JSON, CSV, and HTML report path buffers to 4096 bytes, and added explicit item count notices when HTML reports reach the 500-row sample limit.
-
----
-
-## [0.1.1] - 2026-10-23
 
 ### Added
 - **Debian / Ubuntu Packaging**: Automated generation of `disksonar_0.1.1_amd64.deb` with system desktop entry, hicolor `512x512` icon, copyright notice, and documentation.
