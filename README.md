@@ -121,21 +121,6 @@ See [Building and testing](docs/dev/building.md) for full system requirements an
 
 ---
 
-## Credits
-
-### Libraries & Systems
-
-| Project | Used for |
-| :--- | :--- |
-| [Rust](https://www.rust-lang.org) | Bounded cryptographic hashing, formatting, and unit testing |
-| [X11 / Xlib](https://www.x.org) | Native Linux windowing and software canvas blitting |
-| [Win32 GDI](https://learn.microsoft.com/windows/win32/gdi/windows-gdi) | Native Windows windowing, device contexts, and message loops |
-| [MinGW-w64](https://www.mingw-w64.org) | Windows cross-compilation toolchain and resource compilation |
-| [Inno Setup](https://jrsoftware.org/isinfo.php) | Windows setup installer compiler |
-| [FreeDesktop.org](https://specifications.freedesktop.org/trash-spec/trashspec-latest.html) | Linux Trash specification compliance |
-
----
-
 ## License
 
-DiskSonar is licensed under the [MIT License](LICENSE). Third-party system components and libraries retain their respective licenses.
+DiskSonar is licensed under the [MIT License](LICENSE).

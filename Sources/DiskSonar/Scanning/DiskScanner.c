@@ -217,8 +217,6 @@ static void load_ignore_file(const char *dir_path, DDRuleList *out_rules) {
     if (!dir_path || !out_rules) return;
     static const char * const ignore_filenames[] = {
         ".disksonarignore",
-        ".disklensignore",
-        ".diskdudeignore",
         NULL
     };
     char file_path[4120];
