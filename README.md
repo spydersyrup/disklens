@@ -1,5 +1,9 @@
 # DiskSonar
 
+[![CI](https://github.com/spydersyrup/disksonar/actions/workflows/ci.yml/badge.svg)](https://github.com/spydersyrup/disksonar/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/spydersyrup/disksonar)](https://github.com/spydersyrup/disksonar/releases/latest)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+
 DiskSonar is a native disk storage analyzer for Linux and Windows written in C11. It builds a flat in-memory tree of every file and folder, then presents storage distribution across nine interactive visualizations, a 3-pass duplicate finder, an application leftover cleaner, a live system monitor, and folder snapshots.
 
 Items are never deleted directly. Every item is staged in the Cleanup Queue first. Committing the queue moves items to the system Trash (FreeDesktop.org Trash on Linux, Recycle Bin on Windows) after confirmation, and updates ancestor sizes in place without rescanning.

@@ -5,6 +5,7 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   linux-build-and-test:
@@ -43,7 +44,7 @@ jobs:
       - name: Install MinGW cross-compiler
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc-mingw-w64-x86-64
+          sudo apt-get install -y gcc make libx11-dev gcc-mingw-w64-x86-64
 
       - name: Install Rust toolchain with Windows target
         uses: dtolnay/rust-toolchain@stable
