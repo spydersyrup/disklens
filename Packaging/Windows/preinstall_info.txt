@@ -1,0 +1,53 @@
+======================================================================
+  DiskSonar 0.1.0 - Native Disk Storage Analyzer
+======================================================================
+
+Welcome to DiskSonar Setup.
+
+DiskSonar is an ultra-fast, multi-threaded storage space visualizer
+and cleanup tool built in Rust and C. It scans directory trees,
+computes folder usage, identifies large duplicate files, and provides
+interactive views including Treemaps, Sunburst diagrams, Flame graphs,
+and Age maps.
+
+----------------------------------------------------------------------
+PERMISSIONS AND PRIVILEGES
+----------------------------------------------------------------------
+
+1. Standard vs. Administrator Installation:
+   - "Install for all users": Installs to Program Files. This option
+     requires Administrator permissions.
+   - "Install for me only": Installs to your local AppData folder.
+     Does not require administrative rights.
+
+2. Scanning Protected Folders and System Drives:
+   - When scanning user folders (Documents, Downloads, Projects), standard
+     user permissions are sufficient.
+   - When scanning full system drives (e.g. C:\), certain directories
+     (such as System Volume Information, Windows system directories,
+     and other user profiles) are protected by Windows NTFS permissions.
+   - Running DiskSonar as Administrator allows complete access to these
+     protected areas to account for every byte on your system.
+   - You can choose to configure DiskSonar to launch with Administrator
+     privileges by default in the Tasks step of this wizard.
+
+3. Security and Privacy:
+   - 100% Offline: DiskSonar never connects to the internet or sends
+     telemetry. All metadata, scanning, and duplicate hashing occur
+     locally on your machine.
+   - Read-Only Scanning: The scanning engine only reads file sizes and
+     directory entries. It never modifies, moves, or deletes files
+     without your explicit confirmation in the Cleanup Queue.
+
+----------------------------------------------------------------------
+SYSTEM INTEGRATION
+----------------------------------------------------------------------
+
+- Explorer Context Menu: Quickly scan any folder or drive by
+  right-clicking it in Windows Explorer and choosing "Scan with DiskSonar".
+- Command Line: You can run DiskSonar directly from Command Prompt or
+  PowerShell by enabling the PATH integration option.
+
+For source code, issue reporting, and documentation, visit:
+https://github.com/spydersyrup/disksonar
+======================================================================
