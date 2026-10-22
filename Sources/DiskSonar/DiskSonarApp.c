@@ -38,7 +38,6 @@ static void attach_parent_console(void) {
 
 static void apply_env_hooks(DDAppState *st) {
     const char *mode_env = getenv("DISKSONAR_MODE");
-    if (!mode_env || !*mode_env) mode_env = getenv("DISKDUDE_MODE");
     if (mode_env && *mode_env) {
         static const char * const names[9] = {
             "Treemap", "Folders", "Sunburst", "Flame", "Bubbles", "Mind Map", "Top Sizes", "Age Map", "List"
@@ -51,12 +50,10 @@ static void apply_env_hooks(DDAppState *st) {
         }
     }
     const char *scan_env = getenv("DISKSONAR_SCAN");
-    if (!scan_env || !*scan_env) scan_env = getenv("DISKDUDE_SCAN");
     if (scan_env && *scan_env) {
         dd_app_start_scan(st, scan_env);
     }
     const char *ex_env = getenv("DISKSONAR_EXCLUDE");
-    if (!ex_env || !*ex_env) ex_env = getenv("DISKDUDE_EXCLUDE");
     if (ex_env && *ex_env) {
         dd_scanner_add_exclude(st->scanner, ex_env);
     }
@@ -780,7 +777,6 @@ static int run_cli_report(const char *target_dir, int top_count, const char *exc
         dd_scanner_add_exclude(scanner, exclude_pattern);
     }
     const char *ex_env = getenv("DISKSONAR_EXCLUDE");
-    if (!ex_env || !*ex_env) ex_env = getenv("DISKDUDE_EXCLUDE");
     if (ex_env && *ex_env) {
         dd_scanner_add_exclude(scanner, ex_env);
     }
@@ -887,7 +883,6 @@ static int run_scan_and_export(const char *target_dir, const char *json_out, con
         dd_scanner_add_exclude(scanner, exclude_pattern);
     }
     const char *ex_env = getenv("DISKSONAR_EXCLUDE");
-    if (!ex_env || !*ex_env) ex_env = getenv("DISKDUDE_EXCLUDE");
     if (ex_env && *ex_env) {
         dd_scanner_add_exclude(scanner, ex_env);
     }
@@ -938,7 +933,7 @@ static int run_scan_and_export(const char *target_dir, const char *json_out, con
     return success ? 0 : 1;
 }
 
-#if defined(DISKSONAR_RUST_HOST) || defined(DISKDUDE_RUST_HOST)
+#if defined(DISKSONAR_RUST_HOST)
 int dd_native_app_main(int argc, char **argv) {
 #else
 int main(int argc, char **argv) {

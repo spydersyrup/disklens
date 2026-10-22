@@ -55,7 +55,7 @@ Filesystem crawling scales across all available CPU cores:
 - **Work-Stealing Queue**: A lock-free or mutex-protected directory stack distributes directories among idle threads.
 - **Fast System Calls**: Uses `fstatat` with `AT_SYMLINK_NOFOLLOW` on Linux to avoid symlink loops, and `FindFirstFileExA` / `FindNextFileA` with `FindExInfoBasic` on Windows.
 - **Kernel Guard Rails**: Virtual kernel filesystems (`/proc`, `/sys`, `/dev`, `/run`) are automatically skipped on Linux to prevent kernel deadlocks.
-- **Ignore Rules**: Honors `.disksonarignore`, `.disklensignore`, and `.diskdudeignore` files at each folder level, as well as command-line `--exclude` glob patterns.
+- **Ignore Rules**: Honors `.disksonarignore` files at each folder level, as well as command-line `--exclude` glob patterns.
 
 ---
 
