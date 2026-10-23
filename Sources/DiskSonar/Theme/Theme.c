@@ -83,37 +83,52 @@ void dd_theme_init(DDTheme *t, bool is_dark) {
         t->focus_ring     = dd_color_hex(0xF59E0B, 1.0);
     }
 
-    t->pastel_text_primary   = dd_color_hex(0x18181B, 1.0);
-    t->pastel_text_secondary = dd_color_hex(0x27272A, 1.0);
+    if (!is_dark) {
+        t->pastel_text_primary   = dd_color_hex(0x18181B, 1.0);
+        t->pastel_text_secondary = dd_color_hex(0x52525B, 1.0);
 
-    /* Muted, desaturated technical category spectrum (no candy neons) */
-    t->categories[0] = dd_color_hex(0x60A5FA, 1.0); /* Apps: Muted Steel Blue */
-    t->categories[1] = dd_color_hex(0xA78BFA, 1.0); /* Media: Muted Slate Violet */
-    t->categories[2] = dd_color_hex(0xF472B6, 1.0); /* Audio: Muted Rose */
-    t->categories[3] = dd_color_hex(0xFBBF24, 1.0); /* Images: Muted Warm Amber */
-    t->categories[4] = dd_color_hex(0x34D399, 1.0); /* Documents: Muted Sage */
-    t->categories[5] = dd_color_hex(0xFB923C, 1.0); /* Archives: Muted Terracotta */
-    t->categories[6] = dd_color_hex(0x38BDF8, 1.0); /* Developer / Code: Muted Sky */
-    t->categories[7] = dd_color_hex(0x9CA3AF, 1.0); /* System / Kernel: Neutral Gray */
-    t->categories[8] = dd_color_hex(0x6B7280, 1.0); /* Other / Binary: Cool Slate */
+        /* Soft architectural slate folder families */
+        t->folder_families[0] = dd_color_hex(0xF1F5F9, 1.0);
+        t->folder_families[1] = dd_color_hex(0xE2E8F0, 1.0);
+        t->folder_families[2] = dd_color_hex(0xEDF2F7, 1.0);
+        t->folder_families[3] = dd_color_hex(0xE8EEF5, 1.0);
+        t->folder_families[4] = dd_color_hex(0xEEF2F6, 1.0);
+        t->folder_families[5] = dd_color_hex(0xE5E7EB, 1.0);
+        t->folder_families[6] = dd_color_hex(0xF3F4F6, 1.0);
+        t->folder_families[7] = dd_color_hex(0xE2E8F0, 1.0);
+    } else {
+        t->pastel_text_primary   = dd_color_hex(0xF4F4F5, 1.0);
+        t->pastel_text_secondary = dd_color_hex(0xA1A1AA, 1.0);
+
+        /* Tonal graphite folder families */
+        t->folder_families[0] = dd_color_hex(0x27272A, 1.0);
+        t->folder_families[1] = dd_color_hex(0x2E2E33, 1.0);
+        t->folder_families[2] = dd_color_hex(0x323238, 1.0);
+        t->folder_families[3] = dd_color_hex(0x2A2A30, 1.0);
+        t->folder_families[4] = dd_color_hex(0x28282E, 1.0);
+        t->folder_families[5] = dd_color_hex(0x26262B, 1.0);
+        t->folder_families[6] = dd_color_hex(0x242429, 1.0);
+        t->folder_families[7] = dd_color_hex(0x222227, 1.0);
+    }
+
+    /* Architectural technical category spectrum (subdued, cohesive, zero candy neon) */
+    t->categories[CAT_VIDEO]     = dd_color_hex(0x4B6584, 1.0); /* Video: Steel Slate */
+    t->categories[CAT_AUDIO]     = dd_color_hex(0x575FCF, 1.0); /* Audio: Muted Indigo */
+    t->categories[CAT_IMAGE]     = dd_color_hex(0x9E6B55, 1.0); /* Images: Warm Copper */
+    t->categories[CAT_DOCUMENT]  = dd_color_hex(0x9B783E, 1.0); /* Documents: Muted Ochre */
+    t->categories[CAT_DEVELOPER] = dd_color_hex(0x3B7A7A, 1.0); /* Developer / Code: Technical Teal */
+    t->categories[CAT_ARCHIVE]   = dd_color_hex(0x7C6A59, 1.0); /* Archives: Raw Umber */
+    t->categories[CAT_APPS]      = dd_color_hex(0xD97706, 1.0); /* Apps: Amber Industrial */
+    t->categories[CAT_SYSTEM]    = dd_color_hex(0x596275, 1.0); /* System: Iron Gray */
+    t->categories[CAT_OTHER]     = dd_color_hex(0x4A4E5A, 1.0); /* Other: Deep Charcoal */
 
     /* Monochromatic thermal age steps */
-    t->age_buckets[0] = dd_color_hex(0x34D399, 1.0); /* < 7d: Recent sage */
-    t->age_buckets[1] = dd_color_hex(0x60A5FA, 1.0); /* 7-30d: Active steel */
-    t->age_buckets[2] = dd_color_hex(0x94A3B8, 1.0); /* 1-3m: Settled slate */
-    t->age_buckets[3] = dd_color_hex(0x64748B, 1.0); /* 3-12m: Cool slate */
-    t->age_buckets[4] = dd_color_hex(0x475569, 1.0); /* 1-2y: Cold slate */
-    t->age_buckets[5] = dd_color_hex(0x334155, 1.0); /* > 2y: Dormant dark slate */
-
-    /* Desaturated folder families */
-    t->folder_families[0] = dd_color_hex(0x60A5FA, 1.0);
-    t->folder_families[1] = dd_color_hex(0x34D399, 1.0);
-    t->folder_families[2] = dd_color_hex(0xFBBF24, 1.0);
-    t->folder_families[3] = dd_color_hex(0xA78BFA, 1.0);
-    t->folder_families[4] = dd_color_hex(0x38BDF8, 1.0);
-    t->folder_families[5] = dd_color_hex(0xFB923C, 1.0);
-    t->folder_families[6] = dd_color_hex(0x94A3B8, 1.0);
-    t->folder_families[7] = dd_color_hex(0x64748B, 1.0);
+    t->age_buckets[0] = dd_color_hex(0x3B7A7A, 1.0); /* < 7d: Recent teal */
+    t->age_buckets[1] = dd_color_hex(0x4B6584, 1.0); /* 7-30d: Active steel */
+    t->age_buckets[2] = dd_color_hex(0x64748B, 1.0); /* 1-3m: Settled slate */
+    t->age_buckets[3] = dd_color_hex(0x475569, 1.0); /* 3-12m: Cool slate */
+    t->age_buckets[4] = dd_color_hex(0x334155, 1.0); /* 1-2y: Cold slate */
+    t->age_buckets[5] = dd_color_hex(0x1E293B, 1.0); /* > 2y: Dormant dark slate */
 }
 
 static void get_settings_path(char *buf, size_t cap) {
@@ -147,7 +162,7 @@ static bool detect_system_dark_mode(void) {
 
 void dd_settings_load(DDSettings *s) {
     memset(s, 0, sizeof(*s));
-    s->is_dark = detect_system_dark_mode();
+    s->is_dark = true; /* Default to Dark Graphite Pro */
     s->has_theme_pref = false;
 
     char path[512];
